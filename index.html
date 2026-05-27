@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bedtime Tunes</title>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XT56GW888D"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XT56GW888D');</script>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Josefin+Sans:wght@100;200;300&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -402,15 +404,6 @@
       gap: 1.2rem;
     }
   </style>
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XT56GW888D"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-XT56GW888D');
-</script>
 </head>
 <body>
 
@@ -421,7 +414,7 @@
 
   <!-- LOGIN -->
   <div id="login-screen">
-    <img class="playlist-cover" id="login-cover" src="" alt="Bedtime Tunes" style="background:linear-gradient(135deg,#3d1a3a,#c2416b);" />
+    <img class="playlist-cover" id="login-cover" src="./bedtimetunes.jpg" alt="Bedtime Tunes" style="background:linear-gradient(135deg,#3d1a3a,#c2416b);" />
     <div class="title-block">
       <h1>Bedtime Tunes</h1>
       <p>tunes to snooze to</p>
@@ -508,7 +501,7 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 const CLIENT_ID      = 'e86a40e7f7704f33a1ceaffc9e2d16b7';
-const REDIRECT_URI   = 'https://bedtimetunes.com/';
+const REDIRECT_URI   = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/';
 const PLAYLIST_ID    = '6AGKG8W0y4xezu8Cl6Rtkj';
 const SCOPES         = [
   'streaming',
