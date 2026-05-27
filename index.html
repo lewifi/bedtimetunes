@@ -546,6 +546,24 @@
       animation: shimmer 1.8s ease-in-out infinite;
     }
 
+    /* Player screen fades out when mini is showing */
+    #player-screen.mini-active .art-row,
+    #player-screen.mini-active > .glass-card:first-of-type,
+    #player-screen.mini-active > .player-header {
+      opacity: 0;
+      max-height: 0;
+      margin: 0;
+      padding: 0;
+      pointer-events: none;
+      overflow: hidden;
+      transition: opacity 0.35s ease, max-height 0.45s ease, padding 0.45s ease, margin 0.45s ease;
+    }
+    #player-screen .art-row,
+    #player-screen > .glass-card:first-of-type,
+    #player-screen > .player-header {
+      transition: opacity 0.35s ease, max-height 0.45s ease, padding 0.45s ease, margin 0.45s ease;
+    }
+
     /* Mini player (sticky header) */
     #mini-player {
       position: fixed;
@@ -941,7 +959,7 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-27 17:18 AEST';
+const BUILD_DATE = '2026-05-27 17:40 AEST';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE);
 
 const CLIENT_ID      = 'e86a40e7f7704f33a1ceaffc9e2d16b7';
@@ -969,7 +987,6 @@ const SCOPES         = [
     W = canvas.width  = window.innerWidth;
     H = canvas.height = window.innerHeight;
   }
-  window.addEventListener('resize', resize);
   resize();
 
   // Each orb has independent drift + breathing pulsation phases.
@@ -1019,31 +1036,44 @@ const SCOPES         = [
     ctx.restore();
   }
 
+  let rafId;
   function frame(ts) {
     ctx.clearRect(0, 0, W, H);
-
-    // Deep space base — static, no recompute needed
     const bg = ctx.createRadialGradient(W*0.5, H*0.38, 0, W*0.5, H*0.38, H);
     bg.addColorStop(0,   '#28102e');
     bg.addColorStop(0.6, '#1a0a22');
     bg.addColorStop(1,   '#0b0410');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
-
-    // Orbs blend additively via 'lighter' composite for that luminous glow
     ctx.globalCompositeOperation = 'lighter';
     orbs.forEach(o => drawOrb(o, ts));
     ctx.globalCompositeOperation = 'source-over';
-
-    requestAnimationFrame(frame);
+    rafId = requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  rafId = requestAnimationFrame(frame);
+
+  // Pause animation when tab is hidden — saves CPU + battery
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      cancelAnimationFrame(rafId);
+    } else {
+      rafId = requestAnimationFrame(frame);
+    }
+  });
+
+  // Debounce resize so we don't recalculate on every pixel
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resize, 100);
+  });
 })();
 
 // Stars
 (function initStars() {
   const container = document.getElementById('stars');
-  for (let i = 0; i < 180; i++) {
+  const count = window.innerWidth < 600 ? 80 : 180;
+  for (let i = 0; i < count; i++) {
     const s = document.createElement('div');
     s.className = 'star';
     const sz = Math.random() * 2 + 0.5;
@@ -1194,7 +1224,10 @@ async function api(path, opts = {}) {
   });
   if (res.status === 204) return null;
   if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  // Some endpoints return empty/text bodies — try JSON, fall back gracefully
+  const text = await res.text();
+  if (!text) return null;
+  try { return JSON.parse(text); } catch(e) { return null; }
 }
 
 // ─────────────────────────────────────────────
@@ -1271,11 +1304,46 @@ function startProgress(position, duration) {
 // ─────────────────────────────────────────────
 // Queue / playlist fetch
 // ─────────────────────────────────────────────
-async function fetchPlaylistTracks() {
-  // Pull cover image in parallel with first page
-  const playlistMetaPromise = api(`/playlists/${PLAYLIST_ID}?fields=images,tracks(total)`);
+const PLAYLIST_CACHE_KEY = 'bt_playlist_cache_v1';
+const PLAYLIST_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
-  // Paginate through ALL tracks (Spotify caps page size at 100)
+function readPlaylistCache() {
+  try {
+    const raw = localStorage.getItem(PLAYLIST_CACHE_KEY);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > PLAYLIST_CACHE_TTL) return null;
+    return data;
+  } catch(e) { return null; }
+}
+
+function writePlaylistCache(data) {
+  try {
+    localStorage.setItem(PLAYLIST_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+  } catch(e) { /* quota exceeded — silent */ }
+}
+
+async function fetchPlaylistTracks() {
+  // Try cache first for instant render
+  const cached = readPlaylistCache();
+  if (cached) {
+    console.log('[cache] using cached playlist (' + cached.tracks.length + ' tracks)');
+    tracks = cached.tracks;
+    trackItems = cached.tracks;
+    if (cached.coverImg) {
+      const el = document.getElementById('login-cover');
+      if (el) el.src = cached.coverImg;
+    }
+    renderQueue();
+    // Refresh in background — silently update if changed
+    setTimeout(() => fetchPlaylistTracksFresh(), 1500);
+    return;
+  }
+  return fetchPlaylistTracksFresh();
+}
+
+async function fetchPlaylistTracksFresh() {
+  const playlistMetaPromise = api(`/playlists/${PLAYLIST_ID}?fields=images,tracks(total)`);
   const allRaw = [];
   let offset = 0;
   const pageSize = 100;
@@ -1317,12 +1385,14 @@ async function fetchPlaylistTracks() {
     const el = document.getElementById('login-cover');
     if (el) el.src = coverImg;
   }
+  // Cache for next page load
+  writePlaylistCache({ tracks: trackItems, coverImg });
   renderQueue();
 }
 
 function adderAvatar(adder, cls, initialsCls) {
   if (!adder) return ''; // show nothing if no adder info
-  if (adder.img) return `<img class="${cls}" src="${adder.img}" alt="${adder.name}" title="Added by ${adder.name}" />`;
+  if (adder.img) return `<img class="${cls}" src="${adder.img}" alt="${adder.name}" title="Added by ${adder.name}" loading="lazy" decoding="async" />`;
   const initials = adder.name.split(' ').map(w=>w[0]).join('').slice(0,2);
   return `<div class="${initialsCls}" title="Added by ${adder.name}">${initials}</div>`;
 }
@@ -1339,7 +1409,7 @@ function renderQueueItems(items) {
     // Try to find adder from our local tracks data
     const localTrack = tracks.find(lt => lt.uri === t.uri);
     el.innerHTML = `
-      <img class="queue-thumb" src="${thumb}" alt="" />
+      <img class="queue-thumb" src="${thumb}" alt="" loading="lazy" decoding="async" />
       <div class="queue-meta">
         <div class="queue-track">${t.name}</div>
         <div class="queue-artist">${t.artists.map(a=>a.name).join(', ')}</div>
@@ -1393,7 +1463,7 @@ function renderFullList(reset = true) {
     const thumb = t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || '';
     el.innerHTML = `
       <div class="full-track-num">${tracks.length - i}</div>
-      <img class="full-track-thumb" src="${thumb}" alt="" />
+      <img class="full-track-thumb" src="${thumb}" alt="" loading="lazy" decoding="async" />
       <div class="full-track-meta">
         <div class="full-track-name">${t.name}</div>
         <div class="full-track-artist">${t.artists.map(a=>a.name).join(', ')}</div>
@@ -1650,10 +1720,13 @@ let lastScrollY = 0;
 
 function onScroll() {
   const y = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+  const playerScreen = document.getElementById('player-screen');
   if (y > 100) {
     miniPlayer.classList.add('visible');
+    playerScreen?.classList.add('mini-active');
   } else {
     miniPlayer.classList.remove('visible');
+    playerScreen?.classList.remove('mini-active');
   }
   lastScrollY = y;
 }
