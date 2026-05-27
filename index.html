@@ -447,6 +447,15 @@
       display: none;
     }
 
+    /* Loading pulse — applied to player surfaces until first track arrives */
+    @keyframes pulse-load {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.25; }
+    }
+    .loading-pulse {
+      animation: pulse-load 1.6s ease-in-out infinite;
+    }
+
     /* Glassmorphism card for player */
     .glass-card {
       background: rgba(26, 10, 30, 0.55);
@@ -932,7 +941,7 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-27 17:10 AEST';
+const BUILD_DATE = '2026-05-27 17:18 AEST';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE);
 
 const CLIENT_ID      = 'e86a40e7f7704f33a1ceaffc9e2d16b7';
@@ -1221,10 +1230,11 @@ function updateTrackUI(item) {
     document.getElementById('mini-art').src = art;
   }
   document.getElementById('time-total').textContent  = ms(item.duration_ms);
-  // Remove shimmer now that we have real data
+  // Remove shimmer + pulse now that we have real data
   ['now-art','playlist-art','track-name','artist-name'].forEach(id => {
     document.getElementById(id)?.classList.remove('shimmer');
   });
+  document.querySelectorAll('.loading-pulse').forEach(el => el.classList.remove('loading-pulse'));
   highlightQueue(item.uri);
   // highlightQueue already updates the active class on existing rows --
   // no need to re-render the full list (which would reset pagination).
@@ -1542,11 +1552,15 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
 function showPlayer() {
   document.getElementById('login-screen').style.display  = 'none';
   document.getElementById('player-screen').style.display = 'flex';
-  // Add shimmer to elements that need data
+  // Add shimmer to track info + artwork
   ['now-art','playlist-art','track-name','artist-name'].forEach(id => {
     document.getElementById(id)?.classList.add('shimmer');
   });
   document.getElementById('queue-list').classList.add('fading');
+  // Pulse the glass-card backgrounds + show-playlist button while loading
+  document.querySelectorAll('#player-screen .glass-card, #btn-show-playlist').forEach(el => {
+    el.classList.add('loading-pulse');
+  });
 }
 function showError(msg) {
   const el = document.getElementById('error-msg');
