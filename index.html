@@ -727,7 +727,6 @@
 
 </div>
 
-<script src="https://sdk.scdn.co/spotify-player.js"></script>
 <script>
 // ─────────────────────────────────────────────
 // CONFIGURATION — paste your own values here
@@ -1204,7 +1203,8 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
       document.getElementById('progress-bar').value = state.position;
       document.getElementById('time-current').textContent = ms(state.position);
     }
-    refreshQueue();
+    clearTimeout(window._queueTimer);
+    window._queueTimer = setTimeout(refreshQueue, 1200);
   });
 
   player.addListener('initialization_error', ({ message }) => showError(message));
@@ -1261,7 +1261,7 @@ document.getElementById('btn-shuffle').addEventListener('click', async () => {
   try {
     await api(`/me/player/shuffle?state=${next}`, { method: 'PUT' });
     updateShuffleUI(next);
-    setTimeout(refreshQueue, 600);
+    setTimeout(refreshQueue, 1200);
   } catch(e) {
     console.error('Shuffle toggle failed', e);
   }
@@ -1318,7 +1318,8 @@ document.getElementById('btn-show-playlist').addEventListener('click', () => {
   const token = await getToken();
   if (!token) return; // Stay on login screen
 
-  // Token exists — SDK will fire onSpotifyWebPlaybackSDKReady
+  // Token exists — load SDK which will fire onSpotifyWebPlaybackSDKReady
+  loadSDK();
 })();
 </script>
 </body>
