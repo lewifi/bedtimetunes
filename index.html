@@ -343,8 +343,8 @@
       display: flex;
       flex-direction: column;
       gap: 0.3rem;
-      max-height: 120px;
-      overflow-y: auto;
+      max-height: 60px;
+      overflow-y: hidden;
       scrollbar-width: none;
     }
     .queue-list::-webkit-scrollbar { display: none; }
@@ -1104,7 +1104,7 @@ async function refreshQueue() {
   try {
     const queueData = await api('/me/player/queue');
     if (queueData?.queue?.length) {
-      renderQueueItems(queueData.queue.slice(0, 5));
+      renderQueueItems(queueData.queue.slice(0, 1));
     } else {
       renderQueue();
     }
@@ -1117,7 +1117,7 @@ function renderQueue() {
   renderFullList();
   const idx = currentUri ? tracks.findIndex(t => t.uri === currentUri) : -1;
   const upcoming = tracks.slice(idx + 1, idx + 6);
-  renderQueueItems(upcoming.length ? upcoming : tracks.slice(0, 5));
+  renderQueueItems(upcoming.length ? upcoming.slice(0, 1) : tracks.slice(0, 1));
 }
 
 function renderFullList() {
