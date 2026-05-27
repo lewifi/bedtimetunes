@@ -194,18 +194,32 @@
     }
     .playlist-link:hover { color: rgba(255,255,255,0.7); }
 
-    /* Album art */
-    #now-art {
-      width: min(280px, 70vw);
-      height: min(280px, 70vw);
+    /* Album art row */
+    .art-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      width: 100%;
+    }
+    #now-art, #playlist-art {
+      width: min(190px, 42vw);
+      height: min(190px, 42vw);
       border-radius: 10px;
       object-fit: cover;
-      box-shadow: 0 0 80px rgba(192, 65, 107, 0.5), 0 20px 60px rgba(0,0,0,0.6);
       transition: box-shadow 0.6s, transform 0.4s;
       animation: float 8s ease-in-out infinite;
     }
+    #now-art {
+      box-shadow: 0 0 80px rgba(192, 65, 107, 0.5), 0 20px 60px rgba(0,0,0,0.6);
+    }
     #now-art.playing {
       box-shadow: 0 0 100px rgba(192, 65, 107, 0.7), 0 0 200px rgba(192, 65, 107, 0.2), 0 20px 60px rgba(0,0,0,0.6);
+    }
+    #playlist-art {
+      box-shadow: 0 0 40px rgba(192, 65, 107, 0.25), 0 20px 40px rgba(0,0,0,0.5);
+      opacity: 0.85;
+      animation-delay: -3s;
     }
 
     /* Track info */
@@ -632,7 +646,10 @@
          target="_blank" class="playlist-link">open in spotify ↗</a>
     </div>
 
-    <img id="now-art" src="" alt="Album Art" />
+    <div class="art-row">
+      <img id="now-art" src="" alt="Album Art" />
+      <img id="playlist-art" src="./bedtimetunes.jpg" alt="Bedtime Tunes" />
+    </div>
 
     <div class="glass-card">
       <div class="track-info">
@@ -1059,35 +1076,49 @@ function adderAvatar(adder, cls, initialsCls) {
   return `<div class="${initialsCls}" title="Added by ${adder.name}">${initials}</div>`;
 }
 
-function renderQueue() {
-  renderFullList();
+function renderQueueItems(items) {
   const list = document.getElementById('queue-list');
   if (!list) return;
   list.innerHTML = '';
-  // Show next 5 tracks from current position
-  const idx = currentUri ? tracks.findIndex(t => t.uri === currentUri) : -1;
-  const upcoming = tracks.slice(idx + 1, idx + 6);
-  if (!upcoming.length) {
-    // fallback: show first 5
-    upcoming.push(...tracks.slice(0, 5));
-  }
-  upcoming.forEach(t => {
+  items.forEach(t => {
     const el = document.createElement('div');
     el.className = 'queue-item';
     el.dataset.uri = t.uri;
     const thumb = t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || '';
+    // Try to find adder from our local tracks data
+    const localTrack = tracks.find(lt => lt.uri === t.uri);
     el.innerHTML = `
       <img class="queue-thumb" src="${thumb}" alt="" />
       <div class="queue-meta">
         <div class="queue-track">${t.name}</div>
         <div class="queue-artist">${t.artists.map(a=>a.name).join(', ')}</div>
       </div>
-      ${adderAvatar(t.adder, 'adder-avatar', 'adder-initials')}
+      ${adderAvatar(localTrack?.adder || null, 'adder-avatar', 'adder-initials')}
       <div class="queue-dur">${ms(t.duration_ms)}</div>
     `;
     el.addEventListener('click', () => playTrack(t.uri));
     list.appendChild(el);
   });
+}
+
+async function refreshQueue() {
+  try {
+    const queueData = await api('/me/player/queue');
+    if (queueData?.queue?.length) {
+      renderQueueItems(queueData.queue.slice(0, 5));
+    } else {
+      renderQueue();
+    }
+  } catch(e) {
+    renderQueue();
+  }
+}
+
+function renderQueue() {
+  renderFullList();
+  const idx = currentUri ? tracks.findIndex(t => t.uri === currentUri) : -1;
+  const upcoming = tracks.slice(idx + 1, idx + 6);
+  renderQueueItems(upcoming.length ? upcoming : tracks.slice(0, 5));
 }
 
 function renderFullList() {
@@ -1173,6 +1204,7 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
       document.getElementById('progress-bar').value = state.position;
       document.getElementById('time-current').textContent = ms(state.position);
     }
+    refreshQueue();
   });
 
   player.addListener('initialization_error', ({ message }) => showError(message));
@@ -1209,6 +1241,18 @@ let shuffleOn = false;
 function updateShuffleUI(on) {
   shuffleOn = on;
   document.getElementById('btn-shuffle').classList.toggle('active', on);
+  const sortBtn = document.getElementById('btn-sort');
+  if (on) {
+    sortBtn.disabled = true;
+    sortBtn.style.opacity = '0.25';
+    sortBtn.style.pointerEvents = 'none';
+    sortBtn.title = 'Disabled while shuffle is on';
+  } else {
+    sortBtn.disabled = false;
+    sortBtn.style.opacity = '';
+    sortBtn.style.pointerEvents = '';
+    sortBtn.title = 'Toggle sort order';
+  }
 }
 
 document.getElementById('btn-shuffle').addEventListener('click', async () => {
@@ -1217,42 +1261,7 @@ document.getElementById('btn-shuffle').addEventListener('click', async () => {
   try {
     await api(`/me/player/shuffle?state=${next}`, { method: 'PUT' });
     updateShuffleUI(next);
-    // After a short delay, re-fetch Spotify's actual queue to update "Up next"
-    setTimeout(async () => {
-      try {
-        const queueData = await api('/me/player/queue');
-        if (queueData?.queue?.length) {
-          // Map Spotify queue items to our track format for display
-          const upNext = queueData.queue.slice(0, 5).map(t => ({
-            uri: t.uri,
-            name: t.name,
-            duration_ms: t.duration_ms,
-            artists: t.artists,
-            album: t.album,
-            adder: null,
-          }));
-          const list = document.getElementById('queue-list');
-          if (!list) return;
-          list.innerHTML = '';
-          upNext.forEach(t => {
-            const el = document.createElement('div');
-            el.className = 'queue-item';
-            el.dataset.uri = t.uri;
-            const thumb = t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || '';
-            el.innerHTML = `
-              <img class="queue-thumb" src="${thumb}" alt="" />
-              <div class="queue-meta">
-                <div class="queue-track">${t.name}</div>
-                <div class="queue-artist">${t.artists.map(a=>a.name).join(', ')}</div>
-              </div>
-              <div class="queue-dur">${ms(t.duration_ms)}</div>
-            `;
-            el.addEventListener('click', () => playTrack(t.uri));
-            list.appendChild(el);
-          });
-        }
-      } catch(e) { console.log('Queue fetch failed', e); }
-    }, 600);
+    setTimeout(refreshQueue, 600);
   } catch(e) {
     console.error('Shuffle toggle failed', e);
   }
