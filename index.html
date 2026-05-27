@@ -635,6 +635,34 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .btn-load-more {
+      width: 100%;
+      margin-top: 0.6rem;
+      padding: 0.7rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.55);
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.55rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    .btn-load-more:hover {
+      background: rgba(194,65,107,0.12);
+      border-color: rgba(194,65,107,0.3);
+      color: rgba(255,255,255,0.85);
+    }
+    .list-end-note {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.55rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.2);
+    }
     .full-track-dur {
       font-size: 0.55rem;
       color: rgba(255,255,255,0.22);
@@ -1095,36 +1123,46 @@ function startProgress(position, duration) {
 // Queue / playlist fetch
 // ─────────────────────────────────────────────
 async function fetchPlaylistTracks() {
-  const [tracksData, playlistData] = await Promise.all([
-    api(`/playlists/${PLAYLIST_ID}/tracks?limit=50&fields=items(added_by(id),track(uri,name,duration_ms,artists(name),album(images)))`),
-    api(`/playlists/${PLAYLIST_ID}?fields=images`),
-  ]);
+  // Pull cover image in parallel with first page
+  const playlistMetaPromise = api(`/playlists/${PLAYLIST_ID}?fields=images,tracks(total)`);
 
-  const rawItems = (tracksData.items || []).filter(i => i.track);
+  // Paginate through ALL tracks (Spotify caps page size at 100)
+  const allRaw = [];
+  let offset = 0;
+  const pageSize = 100;
+  while (true) {
+    const page = await api(
+      `/playlists/${PLAYLIST_ID}/tracks?limit=${pageSize}&offset=${offset}&fields=items(added_by(id),track(uri,name,duration_ms,artists(name),album(images))),next`
+    );
+    const items = (page?.items || []).filter(i => i.track);
+    allRaw.push(...items);
+    if (!page?.next) break;
+    offset += pageSize;
+    // Safety cap so we never spin forever
+    if (offset > 10000) break;
+  }
 
-  // Collect unique user IDs to batch-fetch profiles
-  const userIds = [...new Set(rawItems.map(i => i.added_by?.id).filter(Boolean))];
+  // Collect unique user IDs (cap at first 50 to avoid hammering API)
+  const userIds = [...new Set(allRaw.map(i => i.added_by?.id).filter(Boolean))].slice(0, 50);
   const profileMap = {};
   await Promise.all(userIds.map(async id => {
     try {
       const u = await api(`/users/${id}`);
-      profileMap[id] = {
-        name: u.display_name || id,
-        img:  u.images?.[0]?.url || null,
-      };
+      profileMap[id] = { name: u.display_name || id, img: u.images?.[0]?.url || null };
     } catch(e) {
       profileMap[id] = { name: id, img: null };
     }
   }));
 
-  // Attach adder info to each track
-  trackItems = rawItems.map(i => ({
+  // Attach adder info; reverse for newest-first default
+  trackItems = allRaw.map(i => ({
     ...i.track,
     adder: profileMap[i.added_by?.id] || null,
   })).reverse();
 
-  tracks = trackItems; // keep global reference
+  tracks = trackItems;
 
+  const playlistData = await playlistMetaPromise;
   const coverImg = playlistData?.images?.[0]?.url;
   if (coverImg) {
     const el = document.getElementById('login-cover');
@@ -1187,11 +1225,19 @@ function renderQueue() {
   renderQueueItems(upcoming.length ? upcoming.slice(0, 1) : tracks.slice(0, 1));
 }
 
-function renderFullList() {
+let visibleCount = 50; // initial page size
+const PAGE = 50;
+
+function renderFullList(reset = true) {
   const list = document.getElementById('full-track-list');
   if (!list) return;
+  if (reset) {
+    list.innerHTML = '';
+    visibleCount = PAGE;
+  }
+  const slice = tracks.slice(0, visibleCount);
   list.innerHTML = '';
-  tracks.forEach((t, i) => {
+  slice.forEach((t, i) => {
     const el = document.createElement('div');
     el.className = 'full-track-item';
     el.dataset.uri = t.uri;
@@ -1209,22 +1255,61 @@ function renderFullList() {
     el.addEventListener('click', () => playTrack(t.uri));
     list.appendChild(el);
   });
+
+  // Append load-more button if more tracks remain
+  if (visibleCount < tracks.length) {
+    const more = document.createElement('button');
+    more.className = 'btn-load-more';
+    more.textContent = `load ${Math.min(PAGE, tracks.length - visibleCount)} more · ${tracks.length - visibleCount} remaining`;
+    more.addEventListener('click', () => {
+      visibleCount += PAGE;
+      renderFullList(false);
+    });
+    list.appendChild(more);
+  } else if (tracks.length > PAGE) {
+    const info = document.createElement('div');
+    info.className = 'list-end-note';
+    info.textContent = `end of playlist · ${tracks.length} tracks`;
+    list.appendChild(info);
+  }
+
   if (currentUri) highlightQueue(currentUri);
 }
 
+let playWindowStart = 0; // index into tracks where current chunk began
+
 async function playPlaylist(startUri) {
   if (!tracks.length) return;
-  // Build the play queue from our current ordering.
-  // Start from the requested track, or from index 0 (which respects current sort).
   const startIdx = startUri
     ? Math.max(0, tracks.findIndex(t => t.uri === startUri))
     : 0;
-  // Spotify accepts up to ~100 URIs. Send our reordered tracks from startIdx onwards.
-  const uris = tracks.slice(startIdx).map(t => t.uri);
+  playWindowStart = startIdx;
+  // Send up to 100 URIs starting at startIdx
+  const uris = tracks.slice(startIdx, startIdx + 100).map(t => t.uri);
   await api(`/me/player/play`, {
     method: 'PUT',
     body: JSON.stringify({ uris }),
   });
+}
+
+// Check if we're approaching end of the current play window; if so, queue more.
+// Called after each track change.
+async function maybeExtendPlayback() {
+  if (!tracks.length || !currentUri) return;
+  const curIdx = tracks.findIndex(t => t.uri === currentUri);
+  if (curIdx < 0) return;
+  const windowEnd = playWindowStart + 100;
+  // When user reaches the last 10 tracks of the current window, queue more
+  if (curIdx >= windowEnd - 10 && windowEnd < tracks.length) {
+    const nextBatch = tracks.slice(windowEnd, windowEnd + 50).map(t => t.uri);
+    // Use Spotify's add-to-queue endpoint one at a time (no bulk endpoint exists)
+    for (const uri of nextBatch) {
+      try {
+        await api(`/me/player/queue?uri=${encodeURIComponent(uri)}`, { method: 'POST' });
+      } catch(e) { /* silent */ }
+    }
+    playWindowStart = windowEnd;
+  }
 }
 
 async function playTrack(uri) {
@@ -1281,7 +1366,10 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
       if (qList) qList.innerHTML = '';
     }, 500);
     clearTimeout(window._queueTimer);
-    window._queueTimer = setTimeout(refreshQueue, 1200);
+    window._queueTimer = setTimeout(() => {
+      refreshQueue();
+      maybeExtendPlayback();
+    }, 1200);
   });
 
   player.addListener('initialization_error', ({ message }) => showError(message));
