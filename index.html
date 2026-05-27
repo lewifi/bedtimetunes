@@ -1067,11 +1067,14 @@ function renderFullList() {
 }
 
 async function playPlaylist(offsetUri) {
+  // Default to newest track (tracks[0] after reverse = last in Spotify's order)
+  const defaultUri = tracks.length ? tracks[0].uri : null;
+  const uri = offsetUri || defaultUri;
   await api(`/me/player/play`, {
     method: 'PUT',
     body: JSON.stringify({
       context_uri: `spotify:playlist:${PLAYLIST_ID}`,
-      offset: offsetUri ? { uri: offsetUri } : { position: 0 },
+      offset: uri ? { uri } : { position: 0 },
     }),
   });
 }
