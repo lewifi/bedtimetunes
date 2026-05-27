@@ -446,8 +446,52 @@
     }
 
     /* Shuffle button */
-    .ctrl-btn.shuffle { }
-    .ctrl-btn.shuffle.active { color: #c2416b; }
+    .ctrl-btn.shuffle {
+      color: rgba(255,255,255,0.25);
+      position: relative;
+    }
+    .ctrl-btn.shuffle.active {
+      color: #c2416b;
+      filter: drop-shadow(0 0 6px rgba(194,65,107,0.9));
+    }
+    .ctrl-btn.shuffle.active::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #c2416b;
+      box-shadow: 0 0 6px rgba(194,65,107,1);
+    }
+
+    /* Sort toggle */
+    .sort-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: none;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 0.2rem 0.6rem;
+      cursor: pointer;
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.5rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .sort-toggle:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
+    .queue-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.6rem;
+    }
+    .queue-header .queue-label { margin-bottom: 0; }
 
     /* Show playlist button */
     .btn-show-playlist {
@@ -642,7 +686,12 @@
     </div>
 
     <div class="queue-section glass-card" style="padding: 1rem 1.2rem;">
-      <div class="queue-label">Up next</div>
+      <div class="queue-header">
+        <div class="queue-label">Up next</div>
+        <button class="sort-toggle" id="btn-sort" title="Toggle sort order">
+          <span id="sort-label">newest first</span>
+        </button>
+      </div>
       <div class="queue-list" id="queue-list"></div>
     </div>
 
@@ -913,7 +962,7 @@ async function api(path, opts = {}) {
 // Player state
 // ─────────────────────────────────────────────
 let player, deviceId;
-let tracks = [], trackItems = [], currentUri = null;
+let tracks = [], trackItems = [], currentUri = null, sortNewestFirst = true;
 let progressInterval;
 
 function ms(ms) {
@@ -1170,6 +1219,14 @@ document.getElementById('progress-bar').addEventListener('input', e => {
 
 document.getElementById('volume-slider').addEventListener('input', e => {
   player?.setVolume(e.target.value / 100);
+});
+
+document.getElementById('btn-sort').addEventListener('click', () => {
+  sortNewestFirst = !sortNewestFirst;
+  document.getElementById('sort-label').textContent = sortNewestFirst ? 'newest first' : 'oldest first';
+  tracks = sortNewestFirst ? [...tracks].reverse() : [...tracks].reverse();
+  renderQueue();
+  renderFullList();
 });
 
 document.getElementById('btn-show-playlist').addEventListener('click', () => {
