@@ -1092,9 +1092,8 @@ function updateTrackUI(item) {
     document.getElementById(id)?.classList.remove('shimmer');
   });
   highlightQueue(item.uri);
-  // Re-render the full playlist (under "show playlist") for highlight,
-  // but NEVER touch the small "Up next" queue here — refreshQueue handles it.
-  renderFullList();
+  // highlightQueue already updates the active class on existing rows --
+  // no need to re-render the full list (which would reset pagination).
 }
 
 function highlightQueue(uri) {
