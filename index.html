@@ -25,7 +25,8 @@
 
     html, body {
       height: 100%;
-      overflow: hidden;
+      overflow-y: auto;
+      scrollbar-width: none;
       font-family: 'Josefin Sans', sans-serif;
       background: var(--deep);
       color: #fff;
@@ -61,7 +62,7 @@
     #app {
       position: relative;
       z-index: 10;
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -350,7 +351,7 @@
       object-fit: cover;
       flex-shrink: 0;
     }
-    .queue-meta { overflow: hidden; }
+    .queue-meta { overflow: hidden; flex: 1; }
     .queue-track {
       font-size: 0.7rem;
       letter-spacing: 0.04em;
@@ -368,11 +369,51 @@
       text-overflow: ellipsis;
     }
     .queue-dur {
-      margin-left: auto;
       font-size: 0.55rem;
       color: rgba(255,255,255,0.25);
       letter-spacing: 0.08em;
       flex-shrink: 0;
+    }
+    .adder-avatar {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      opacity: 0.6;
+    }
+    .adder-initials {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: rgba(194,65,107,0.3);
+      border: 1px solid rgba(194,65,107,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.45rem;
+      letter-spacing: 0.05em;
+      color: rgba(255,255,255,0.5);
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+    .full-track-adder {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      opacity: 0.55;
+    }
+    .full-track-adder-initials {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: rgba(194,65,107,0.25);
+      border: 1px solid rgba(194,65,107,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.45rem;
+      color: rgba(255,255,255,0.45);
+      flex-shrink: 0;
+      text-transform: uppercase;
     }
 
     /* Error / Loading */
@@ -402,6 +443,114 @@
       display: flex;
       flex-direction: column;
       gap: 1.2rem;
+    }
+
+    /* Shuffle button */
+    .ctrl-btn.shuffle { }
+    .ctrl-btn.shuffle.active { color: #c2416b; }
+
+    /* Show playlist button */
+    .btn-show-playlist {
+      width: 100%;
+      max-width: 520px;
+      padding: 0.85rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      background: rgba(26,10,30,0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: rgba(255,255,255,0.45);
+      font-family: 'Josefin Sans', sans-serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+    }
+    .btn-show-playlist:hover {
+      background: rgba(194,65,107,0.12);
+      border-color: rgba(194,65,107,0.3);
+      color: rgba(255,255,255,0.75);
+    }
+    .btn-show-playlist .arrow {
+      transition: transform 0.3s;
+      display: inline-block;
+    }
+    .btn-show-playlist.open .arrow { transform: rotate(180deg); }
+
+    /* Playlist drawer */
+    #playlist-drawer {
+      width: 100%;
+      max-width: 520px;
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
+      opacity: 0;
+    }
+    #playlist-drawer.open {
+      max-height: 2000px;
+      opacity: 1;
+    }
+    .drawer-inner {
+      padding-bottom: 3rem;
+    }
+    .full-track-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .full-track-item {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      padding: 0.55rem 0.8rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .full-track-item:hover { background: rgba(255,255,255,0.05); }
+    .full-track-item.active { background: rgba(194,65,107,0.15); }
+    .full-track-num {
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.2);
+      width: 24px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .full-track-thumb {
+      width: 40px; height: 40px;
+      border-radius: 4px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .full-track-meta { overflow: hidden; flex: 1; }
+    .full-track-name {
+      font-size: 0.75rem;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .full-track-artist {
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .full-track-dur {
+      font-size: 0.55rem;
+      color: rgba(255,255,255,0.22);
+      letter-spacing: 0.08em;
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -456,6 +605,11 @@
       </div>
 
       <div class="controls">
+        <button class="ctrl-btn shuffle" id="btn-shuffle" title="Shuffle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
+          </svg>
+        </button>
         <button class="ctrl-btn" id="btn-prev" title="Previous">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
             <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/>
@@ -491,6 +645,18 @@
       <div class="queue-label">Up next</div>
       <div class="queue-list" id="queue-list"></div>
     </div>
+
+    <button class="btn-show-playlist" id="btn-show-playlist">
+      <span class="arrow">&#8964;</span>
+      <span id="playlist-btn-label">show playlist</span>
+    </button>
+
+    <div id="playlist-drawer">
+      <div class="drawer-inner glass-card" style="border-radius:16px; padding: 1rem;">
+        <div class="full-track-list" id="full-track-list"></div>
+      </div>
+    </div>
+
   </div>
 
 </div>
@@ -630,7 +796,54 @@ async function login() {
   url.searchParams.set('scope',                 SCOPES);
   url.searchParams.set('code_challenge_method', 'S256');
   url.searchParams.set('code_challenge',        challenge);
-  window.location = url.toString();
+
+  // Try popup first; fall back to redirect if blocked
+  const w = 480, h = 640;
+  const left = Math.round(screen.width  / 2 - w / 2);
+  const top  = Math.round(screen.height / 2 - h / 2);
+  const popup = window.open(url.toString(), 'spotify-login',
+    `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+
+  if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+    // Popup blocked — fall back to full redirect
+    window.location = url.toString();
+    return;
+  }
+
+  // Poll for popup to close after redirect back
+  const poll = setInterval(async () => {
+    try {
+      const popupUrl = popup.location.href;
+      if (popupUrl.startsWith(REDIRECT_URI)) {
+        clearInterval(poll);
+        const params = new URLSearchParams(new URL(popupUrl).search);
+        popup.close();
+        const code = params.get('code');
+        if (code) {
+          await exchangeCode(code);
+          // Token stored — now init SDK
+          loadSDK();
+        } else {
+          showError('Login cancelled.');
+        }
+      }
+    } catch(e) {
+      // Cross-origin while on Spotify's domain — keep polling
+    }
+    if (popup.closed) {
+      clearInterval(poll);
+    }
+  }, 300);
+}
+
+function loadSDK() {
+  if (window.Spotify) {
+    window.onSpotifyWebPlaybackSDKReady();
+    return;
+  }
+  const s = document.createElement('script');
+  s.src = 'https://sdk.scdn.co/spotify-player.js';
+  document.head.appendChild(s);
 }
 
 async function exchangeCode(code) {
@@ -700,7 +913,7 @@ async function api(path, opts = {}) {
 // Player state
 // ─────────────────────────────────────────────
 let player, deviceId;
-let tracks = [], currentUri = null;
+let tracks = [], trackItems = [], currentUri = null;
 let progressInterval;
 
 function ms(ms) {
@@ -723,14 +936,13 @@ function updateTrackUI(item) {
   if (art) document.getElementById('now-art').src = art;
   document.getElementById('time-total').textContent  = ms(item.duration_ms);
   highlightQueue(item.uri);
+  renderQueue();
 }
 
 function highlightQueue(uri) {
-  document.querySelectorAll('.queue-item').forEach(el => {
+  document.querySelectorAll('.queue-item, .full-track-item').forEach(el => {
     el.classList.toggle('active', el.dataset.uri === uri);
   });
-  const active = document.querySelector('.queue-item.active');
-  if (active) active.scrollIntoView({ block: 'nearest' });
 }
 
 function startProgress(position, duration) {
@@ -754,10 +966,35 @@ function startProgress(position, duration) {
 // ─────────────────────────────────────────────
 async function fetchPlaylistTracks() {
   const [tracksData, playlistData] = await Promise.all([
-    api(`/playlists/${PLAYLIST_ID}/tracks?limit=50&fields=items(track(uri,name,duration_ms,artists(name),album(images)))`),
+    api(`/playlists/${PLAYLIST_ID}/tracks?limit=50&fields=items(added_by(id),track(uri,name,duration_ms,artists(name),album(images)))`),
     api(`/playlists/${PLAYLIST_ID}?fields=images`),
   ]);
-  tracks = (tracksData.items || []).map(i => i.track).filter(Boolean);
+
+  const rawItems = (tracksData.items || []).filter(i => i.track);
+
+  // Collect unique user IDs to batch-fetch profiles
+  const userIds = [...new Set(rawItems.map(i => i.added_by?.id).filter(Boolean))];
+  const profileMap = {};
+  await Promise.all(userIds.map(async id => {
+    try {
+      const u = await api(`/users/${id}`);
+      profileMap[id] = {
+        name: u.display_name || id,
+        img:  u.images?.[0]?.url || null,
+      };
+    } catch(e) {
+      profileMap[id] = { name: id, img: null };
+    }
+  }));
+
+  // Attach adder info to each track
+  trackItems = rawItems.map(i => ({
+    ...i.track,
+    adder: profileMap[i.added_by?.id] || null,
+  })).reverse();
+
+  tracks = trackItems; // keep global reference
+
   const coverImg = playlistData?.images?.[0]?.url;
   if (coverImg) {
     const el = document.getElementById('login-cover');
@@ -766,10 +1003,25 @@ async function fetchPlaylistTracks() {
   renderQueue();
 }
 
+function adderAvatar(adder, cls, initialsCls) {
+  if (!adder) return `<div class="${initialsCls}">?</div>`;
+  if (adder.img) return `<img class="${cls}" src="${adder.img}" alt="${adder.name}" title="Added by ${adder.name}" />`;
+  const initials = adder.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  return `<div class="${initialsCls}" title="Added by ${adder.name}">${initials}</div>`;
+}
+
 function renderQueue() {
   const list = document.getElementById('queue-list');
+  if (!list) return;
   list.innerHTML = '';
-  tracks.forEach(t => {
+  // Show next 5 tracks from current position
+  const idx = currentUri ? tracks.findIndex(t => t.uri === currentUri) : -1;
+  const upcoming = tracks.slice(idx + 1, idx + 6);
+  if (!upcoming.length) {
+    // fallback: show first 5
+    upcoming.push(...tracks.slice(0, 5));
+  }
+  upcoming.forEach(t => {
     const el = document.createElement('div');
     el.className = 'queue-item';
     el.dataset.uri = t.uri;
@@ -780,7 +1032,32 @@ function renderQueue() {
         <div class="queue-track">${t.name}</div>
         <div class="queue-artist">${t.artists.map(a=>a.name).join(', ')}</div>
       </div>
+      ${adderAvatar(t.adder, 'adder-avatar', 'adder-initials')}
       <div class="queue-dur">${ms(t.duration_ms)}</div>
+    `;
+    el.addEventListener('click', () => playTrack(t.uri));
+    list.appendChild(el);
+  });
+}
+
+function renderFullList() {
+  const list = document.getElementById('full-track-list');
+  if (!list) return;
+  list.innerHTML = '';
+  tracks.forEach((t, i) => {
+    const el = document.createElement('div');
+    el.className = 'full-track-item';
+    el.dataset.uri = t.uri;
+    const thumb = t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || '';
+    el.innerHTML = `
+      <div class="full-track-num">${tracks.length - i}</div>
+      <img class="full-track-thumb" src="${thumb}" alt="" />
+      <div class="full-track-meta">
+        <div class="full-track-name">${t.name}</div>
+        <div class="full-track-artist">${t.artists.map(a=>a.name).join(', ')}</div>
+      </div>
+      ${adderAvatar(t.adder, 'full-track-adder', 'full-track-adder-initials')}
+      <div class="full-track-dur">${ms(t.duration_ms)}</div>
     `;
     el.addEventListener('click', () => playTrack(t.uri));
     list.appendChild(el);
@@ -873,6 +1150,13 @@ document.getElementById('btn-play').addEventListener('click', () => player?.togg
 document.getElementById('btn-prev').addEventListener('click', () => player?.previousTrack());
 document.getElementById('btn-next').addEventListener('click', () => player?.nextTrack());
 
+let shuffleOn = false;
+document.getElementById('btn-shuffle').addEventListener('click', async () => {
+  shuffleOn = !shuffleOn;
+  await api(`/me/player/shuffle?state=${shuffleOn}&device_id=${deviceId}`, { method: 'PUT' });
+  document.getElementById('btn-shuffle').classList.toggle('active', shuffleOn);
+});
+
 document.getElementById('progress-bar').addEventListener('input', e => {
   clearInterval(progressInterval);
   player?.seek(+e.target.value).then(() => {
@@ -882,6 +1166,15 @@ document.getElementById('progress-bar').addEventListener('input', e => {
 
 document.getElementById('volume-slider').addEventListener('input', e => {
   player?.setVolume(e.target.value / 100);
+});
+
+document.getElementById('btn-show-playlist').addEventListener('click', () => {
+  const drawer = document.getElementById('playlist-drawer');
+  const btn    = document.getElementById('btn-show-playlist');
+  const label  = document.getElementById('playlist-btn-label');
+  const open   = drawer.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  label.textContent = open ? 'hide playlist' : 'show playlist';
 });
 
 // ─────────────────────────────────────────────
