@@ -932,7 +932,7 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-27 16:22 AEST';
+const BUILD_DATE = '2026-05-27 16:40 AEST';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE);
 
 const CLIENT_ID      = 'e86a40e7f7704f33a1ceaffc9e2d16b7';
@@ -1419,13 +1419,26 @@ let playWindowStart = 0; // index into tracks where current chunk began
 
 async function playPlaylist(startUri) {
   if (!tracks.length) return;
-  const startIdx = startUri
-    ? Math.max(0, tracks.findIndex(t => t.uri === startUri))
-    : 0;
+  let startIdx = 0;
+  if (startUri) {
+    const foundIdx = tracks.findIndex(t => t.uri === startUri);
+    if (foundIdx === -1) {
+      console.warn('[playPlaylist] URI NOT FOUND in tracks array:', startUri);
+    } else {
+      startIdx = foundIdx;
+    }
+  }
   playWindowStart = startIdx;
   const uris = tracks.slice(startIdx, startIdx + 100).map(t => t.uri);
-  console.log('[playPlaylist] startUri=', startUri, 'startIdx=', startIdx, 'first uri to play=', uris[0]);
   const endpoint = deviceId ? `/me/player/play?device_id=${deviceId}` : '/me/player/play';
+
+  // Spotify quirk: sending uris[] when the first track is already the current
+  // context can be ignored. Workaround — pause first to drop the context,
+  // then play the new list. This guarantees Spotify treats it as a fresh start.
+  try {
+    await api(`/me/player/pause${deviceId ? '?device_id=' + deviceId : ''}`, { method: 'PUT' });
+  } catch(e) { /* fine if already paused */ }
+  await new Promise(r => setTimeout(r, 80));
   await api(endpoint, {
     method: 'PUT',
     body: JSON.stringify({ uris, position_ms: 0 }),
