@@ -1165,6 +1165,7 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
     const item = state.track_window?.current_track;
     updateTrackUI(item);
     setPlaying(!state.paused);
+    if (state.shuffle !== undefined) updateShuffleUI(state.shuffle);
     if (!state.paused) {
       startProgress(state.position, state.duration);
     } else {
@@ -1204,10 +1205,57 @@ document.getElementById('btn-prev').addEventListener('click', () => player?.prev
 document.getElementById('btn-next').addEventListener('click', () => player?.nextTrack());
 
 let shuffleOn = false;
+
+function updateShuffleUI(on) {
+  shuffleOn = on;
+  document.getElementById('btn-shuffle').classList.toggle('active', on);
+}
+
 document.getElementById('btn-shuffle').addEventListener('click', async () => {
-  shuffleOn = !shuffleOn;
-  await api(`/me/player/shuffle?state=${shuffleOn}&device_id=${deviceId}`, { method: 'PUT' });
-  document.getElementById('btn-shuffle').classList.toggle('active', shuffleOn);
+  if (!deviceId) return;
+  const next = !shuffleOn;
+  try {
+    await api(`/me/player/shuffle?state=${next}`, { method: 'PUT' });
+    updateShuffleUI(next);
+    // After a short delay, re-fetch Spotify's actual queue to update "Up next"
+    setTimeout(async () => {
+      try {
+        const queueData = await api('/me/player/queue');
+        if (queueData?.queue?.length) {
+          // Map Spotify queue items to our track format for display
+          const upNext = queueData.queue.slice(0, 5).map(t => ({
+            uri: t.uri,
+            name: t.name,
+            duration_ms: t.duration_ms,
+            artists: t.artists,
+            album: t.album,
+            adder: null,
+          }));
+          const list = document.getElementById('queue-list');
+          if (!list) return;
+          list.innerHTML = '';
+          upNext.forEach(t => {
+            const el = document.createElement('div');
+            el.className = 'queue-item';
+            el.dataset.uri = t.uri;
+            const thumb = t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || '';
+            el.innerHTML = `
+              <img class="queue-thumb" src="${thumb}" alt="" />
+              <div class="queue-meta">
+                <div class="queue-track">${t.name}</div>
+                <div class="queue-artist">${t.artists.map(a=>a.name).join(', ')}</div>
+              </div>
+              <div class="queue-dur">${ms(t.duration_ms)}</div>
+            `;
+            el.addEventListener('click', () => playTrack(t.uri));
+            list.appendChild(el);
+          });
+        }
+      } catch(e) { console.log('Queue fetch failed', e); }
+    }, 600);
+  } catch(e) {
+    console.error('Shuffle toggle failed', e);
+  }
 });
 
 document.getElementById('progress-bar').addEventListener('input', e => {
