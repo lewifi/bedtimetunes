@@ -183,6 +183,18 @@
       letter-spacing: 0.22em;
       text-transform: uppercase;
     }
+    .player-stats {
+      font-family: 'Barlow', sans-serif;
+      font-size: 0.5rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      margin-top: 0.3rem;
+    }
+    .player-stats .sep {
+      color: rgba(255,255,255,0.15);
+      margin: 0 0.45em;
+    }
     .playlist-link {
       font-size: 0.55rem;
       letter-spacing: 0.2em;
@@ -689,7 +701,10 @@
   <!-- PLAYER -->
   <div id="player-screen">
     <div class="player-header">
-      <span class="player-title">Bedtime Tunes</span>
+      <div>
+        <span class="player-title">Bedtime Tunes</span>
+        <div class="player-stats" id="player-stats">since 2006</div>
+      </div>
       <div class="header-actions">
         <button class="icon-btn" id="btn-share" title="Share" aria-label="Share">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -748,11 +763,6 @@
       </div>
 
       <div class="controls">
-        <button class="ctrl-btn" id="btn-prev" title="Previous">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/>
-          </svg>
-        </button>
         <button class="ctrl-btn play-pause" id="btn-play" title="Play/Pause">
           <svg id="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M8 5v14l11-7z"/>
@@ -815,7 +825,7 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-27 20:45 AEST';
+const BUILD_DATE = '2026-05-27 21:05 AEST';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE);
 
 const CLIENT_ID      = 'e86a40e7f7704f33a1ceaffc9e2d16b7';
@@ -1233,6 +1243,7 @@ async function fetchPlaylistTracks() {
       const el = document.getElementById('login-cover');
       if (el) el.src = cached.coverImg;
     }
+    if (cached.stats) renderStats(cached.stats);
     renderQueue();
     // Refresh in background — silently update if changed
     setTimeout(() => fetchPlaylistTracksFresh(), 1500);
@@ -1242,7 +1253,7 @@ async function fetchPlaylistTracks() {
 }
 
 async function fetchPlaylistTracksFresh() {
-  const playlistMetaPromise = api(`/playlists/${PLAYLIST_ID}?fields=images,tracks(total)`);
+  const playlistMetaPromise = api(`/playlists/${PLAYLIST_ID}?fields=images,tracks(total),followers(total)`);
   const allRaw = [];
   let offset = 0;
   const pageSize = 100;
@@ -1284,9 +1295,31 @@ async function fetchPlaylistTracksFresh() {
     const el = document.getElementById('login-cover');
     if (el) el.src = coverImg;
   }
-  // Cache for next page load
-  writePlaylistCache({ tracks: trackItems, coverImg });
+  // Compute stats
+  const totalMs = trackItems.reduce((s, t) => s + (t.duration_ms || 0), 0);
+  const totalHours = Math.round(totalMs / 1000 / 60 / 60);
+  const contributors = new Set(allRaw.map(i => i.added_by?.id).filter(Boolean)).size;
+  const followers = playlistData?.followers?.total || 0;
+  const stats = { totalHours, contributors, followers, trackCount: trackItems.length };
+
+  // Cache for next page load (now includes stats)
+  writePlaylistCache({ tracks: trackItems, coverImg, stats });
+  renderStats(stats);
   renderQueue();
+}
+
+function renderStats(s) {
+  if (!s) return;
+  const fmt = n => n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/, '') + 'k' : n;
+  const parts = [
+    'since 2006',
+    `${s.trackCount} tracks`,
+    `${s.totalHours} hours`,
+    `${s.contributors} contributors`,
+  ];
+  if (s.followers > 0) parts.push(`${fmt(s.followers)} saved`);
+  const el = document.getElementById('player-stats');
+  if (el) el.innerHTML = parts.join('<span class="sep">·</span>');
 }
 
 function adderAvatar(adder, cls, initialsCls) {
@@ -1346,10 +1379,23 @@ let playWindowStart = 0; // index into tracks where current chunk began
 
 async function playPlaylist() {
   if (!tracks.length) return;
-  // Send the entire playlist (up to 100 tracks) as the play context.
-  // Shuffle is always on, so Spotify will randomise from this set.
-  const uris = tracks.slice(0, 100).map(t => t.uri);
-  playWindowStart = 0;
+
+  // First-visit: start from a random track. Subsequent visits: resume naturally.
+  const isFirstVisit = !localStorage.getItem('bt_visited');
+  let startIdx = 0;
+  if (isFirstVisit) {
+    startIdx = Math.floor(Math.random() * tracks.length);
+    localStorage.setItem('bt_visited', '1');
+    console.log('[playPlaylist] first visit — starting at random index', startIdx);
+  }
+
+  // Send up to 100 tracks starting at startIdx
+  const uris = tracks.slice(startIdx, startIdx + 100).map(t => t.uri);
+  // If we didn't get 100 because we're near the end, wrap around for variety
+  if (uris.length < 100 && tracks.length > 100) {
+    uris.push(...tracks.slice(0, 100 - uris.length).map(t => t.uri));
+  }
+  playWindowStart = startIdx;
 
   // Turn shuffle off briefly so Spotify accepts the fresh uris[] order,
   // then turn it back on for randomised playback.
@@ -1359,7 +1405,6 @@ async function playPlaylist() {
     method: 'PUT',
     body: JSON.stringify({ uris, position_ms: 0 }),
   });
-  // Re-enable shuffle so playback continues randomly
   setTimeout(async () => {
     try { await api(`/me/player/shuffle?state=true`, { method: 'PUT' }); } catch(e){}
   }, 500);
@@ -1409,8 +1454,23 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
     showPlayer();
     // Always shuffle
     try { await api(`/me/player/shuffle?state=true`, { method: 'PUT' }); } catch(e){}
-    // Auto-start playlist
-    await playPlaylist();
+    // First visit: random start. Returning visit: try to resume what they had.
+    const isFirstVisit = !localStorage.getItem('bt_visited');
+    if (isFirstVisit) {
+      await playPlaylist();
+    } else {
+      // Try to resume — if Spotify has no recent state, fall back to playlist start
+      try {
+        const cur = await api('/me/player');
+        if (!cur || !cur.is_playing) {
+          // Either no playback or paused — start the playlist
+          await playPlaylist();
+        }
+        // Else Spotify is already playing somewhere; player_state_changed will sync us
+      } catch(e) {
+        await playPlaylist();
+      }
+    }
   });
 
   player.addListener('not_ready', () => console.log('Device offline'));
@@ -1578,7 +1638,6 @@ document.querySelectorAll('.share-opt').forEach(btn => {
 document.getElementById('login-btn').addEventListener('click', login);
 
 document.getElementById('btn-play').addEventListener('click', () => player?.togglePlay());
-document.getElementById('btn-prev').addEventListener('click', () => player?.previousTrack());
 document.getElementById('btn-next').addEventListener('click', () => player?.nextTrack());
 
 document.getElementById('progress-bar').addEventListener('input', e => {
