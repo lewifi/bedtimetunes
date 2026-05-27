@@ -24,12 +24,11 @@
     }
 
     html, body {
-      height: 100%;
-      overflow-y: auto;
-      scrollbar-width: none;
+      min-height: 100%;
       font-family: 'Josefin Sans', sans-serif;
       background: var(--deep);
       color: #fff;
+      scrollbar-width: none;
     }
 
     /* ── Aurora Canvas ── */
@@ -933,10 +932,8 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-27 15:55 AEST';
-console.log(`%cBedtime Tunes %clast updated: ${BUILD_DATE}`,
-  'color:#c2416b;font-weight:600;letter-spacing:0.1em;',
-  'color:rgba(255,255,255,0.5);');
+const BUILD_DATE = '2026-05-27 16:22 AEST';
+console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE);
 
 const CLIENT_ID      = 'e86a40e7f7704f33a1ceaffc9e2d16b7';
 const REDIRECT_URI   = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/';
@@ -1426,11 +1423,12 @@ async function playPlaylist(startUri) {
     ? Math.max(0, tracks.findIndex(t => t.uri === startUri))
     : 0;
   playWindowStart = startIdx;
-  // Send up to 100 URIs starting at startIdx
   const uris = tracks.slice(startIdx, startIdx + 100).map(t => t.uri);
-  await api(`/me/player/play`, {
+  console.log('[playPlaylist] startUri=', startUri, 'startIdx=', startIdx, 'first uri to play=', uris[0]);
+  const endpoint = deviceId ? `/me/player/play?device_id=${deviceId}` : '/me/player/play';
+  await api(endpoint, {
     method: 'PUT',
-    body: JSON.stringify({ uris }),
+    body: JSON.stringify({ uris, position_ms: 0 }),
   });
 }
 
@@ -1619,16 +1617,18 @@ document.getElementById('btn-show-playlist').addEventListener('click', () => {
 const miniPlayer = document.getElementById('mini-player');
 let lastScrollY = 0;
 
-window.addEventListener('scroll', () => {
-  const y = window.scrollY;
-  // Show mini when scrolled past 380px (roughly past the main artwork)
-  if (y > 380) {
+function onScroll() {
+  const y = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+  if (y > 100) {
     miniPlayer.classList.add('visible');
   } else {
     miniPlayer.classList.remove('visible');
   }
   lastScrollY = y;
-}, { passive: true });
+}
+// Run once on load to catch any initial scroll position
+window.addEventListener('scroll', onScroll, { passive: true });
+document.addEventListener('scroll', onScroll, { passive: true });
 
 document.getElementById('mini-play').addEventListener('click', () => player?.togglePlay());
 document.getElementById('mini-prev').addEventListener('click', () => player?.previousTrack());
