@@ -1011,6 +1011,7 @@ function adderAvatar(adder, cls, initialsCls) {
 }
 
 function renderQueue() {
+  renderFullList();
   const list = document.getElementById('queue-list');
   if (!list) return;
   list.innerHTML = '';
