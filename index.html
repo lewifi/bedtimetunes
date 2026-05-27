@@ -932,7 +932,7 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-27 16:40 AEST';
+const BUILD_DATE = '2026-05-27 16:50 AEST';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE);
 
 const CLIENT_ID      = 'e86a40e7f7704f33a1ceaffc9e2d16b7';
@@ -1422,27 +1422,36 @@ async function playPlaylist(startUri) {
   let startIdx = 0;
   if (startUri) {
     const foundIdx = tracks.findIndex(t => t.uri === startUri);
-    if (foundIdx === -1) {
-      console.warn('[playPlaylist] URI NOT FOUND in tracks array:', startUri);
-    } else {
-      startIdx = foundIdx;
-    }
+    if (foundIdx !== -1) startIdx = foundIdx;
   }
   playWindowStart = startIdx;
   const uris = tracks.slice(startIdx, startIdx + 100).map(t => t.uri);
-  const endpoint = deviceId ? `/me/player/play?device_id=${deviceId}` : '/me/player/play';
 
-  // Spotify quirk: sending uris[] when the first track is already the current
-  // context can be ignored. Workaround — pause first to drop the context,
-  // then play the new list. This guarantees Spotify treats it as a fresh start.
-  try {
-    await api(`/me/player/pause${deviceId ? '?device_id=' + deviceId : ''}`, { method: 'PUT' });
-  } catch(e) { /* fine if already paused */ }
-  await new Promise(r => setTimeout(r, 80));
-  await api(endpoint, {
+  // Ensure playback is happening on OUR device (not Spotify desktop/phone)
+  if (deviceId) {
+    try {
+      await api('/me/player', {
+        method: 'PUT',
+        body: JSON.stringify({ device_ids: [deviceId], play: false }),
+      });
+    } catch(e) {}
+  }
+
+  const endpoint = deviceId ? `/me/player/play?device_id=${deviceId}` : '/me/player/play';
+  console.log('[playPlaylist] PUT', endpoint, 'first uri:', uris[0]);
+  const res = await fetch('https://api.spotify.com/v1' + endpoint, {
     method: 'PUT',
+    headers: {
+      Authorization: 'Bearer ' + (await getToken()),
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ uris, position_ms: 0 }),
   });
+  console.log('[playPlaylist] response status:', res.status);
+  if (!res.ok) {
+    const text = await res.text();
+    console.error('[playPlaylist] error response:', text);
+  }
 }
 
 // Check if we're approaching end of the current play window; if so, queue more.
