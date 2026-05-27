@@ -1212,16 +1212,18 @@ function renderFullList() {
   if (currentUri) highlightQueue(currentUri);
 }
 
-async function playPlaylist(offsetUri) {
-  // Default to newest track (tracks[0] after reverse = last in Spotify's order)
-  const defaultUri = tracks.length ? tracks[0].uri : null;
-  const uri = offsetUri || defaultUri;
+async function playPlaylist(startUri) {
+  if (!tracks.length) return;
+  // Build the play queue from our current ordering.
+  // Start from the requested track, or from index 0 (which respects current sort).
+  const startIdx = startUri
+    ? Math.max(0, tracks.findIndex(t => t.uri === startUri))
+    : 0;
+  // Spotify accepts up to ~100 URIs. Send our reordered tracks from startIdx onwards.
+  const uris = tracks.slice(startIdx).map(t => t.uri);
   await api(`/me/player/play`, {
     method: 'PUT',
-    body: JSON.stringify({
-      context_uri: `spotify:playlist:${PLAYLIST_ID}`,
-      offset: uri ? { uri } : { position: 0 },
-    }),
+    body: JSON.stringify({ uris }),
   });
 }
 
@@ -1358,12 +1360,15 @@ document.getElementById('volume-slider').addEventListener('input', e => {
   player?.setVolume(e.target.value / 100);
 });
 
-document.getElementById('btn-sort').addEventListener('click', () => {
+document.getElementById('btn-sort').addEventListener('click', async () => {
   sortNewestFirst = !sortNewestFirst;
   document.getElementById('sort-label').textContent = sortNewestFirst ? 'newest first' : 'oldest first';
-  tracks = sortNewestFirst ? [...tracks].reverse() : [...tracks].reverse();
-  renderQueue();
+  tracks = [...tracks].reverse();
   renderFullList();
+  // Rebuild the play queue from the currently playing track in the new order
+  if (currentUri) {
+    await playPlaylist(currentUri);
+  }
 });
 
 document.getElementById('btn-show-playlist').addEventListener('click', () => {
