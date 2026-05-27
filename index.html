@@ -507,6 +507,34 @@
     }
     .queue-header .queue-label { margin-bottom: 0; }
 
+    /* Shimmer loading */
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position:  400px 0; }
+    }
+    .shimmer {
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.04) 25%,
+        rgba(255,255,255,0.10) 50%,
+        rgba(255,255,255,0.04) 75%);
+      background-size: 800px 100%;
+      animation: shimmer 1.8s ease-in-out infinite;
+      border-radius: 4px;
+      color: transparent !important;
+      pointer-events: none;
+      user-select: none;
+    }
+    .shimmer * { visibility: hidden; }
+    #now-art.shimmer, #playlist-art.shimmer {
+      border-radius: 10px;
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.04) 25%,
+        rgba(255,255,255,0.09) 50%,
+        rgba(255,255,255,0.04) 75%);
+      background-size: 800px 100%;
+      animation: shimmer 1.8s ease-in-out infinite;
+    }
+
     /* Show playlist button */
     .btn-show-playlist {
       width: 100%;
@@ -777,15 +805,24 @@ const SCOPES         = [
   window.addEventListener('resize', resize);
   resize();
 
-  // Each orb drifts independently with its own sine phase offsets.
-  // All speeds are tiny so motion is barely perceptible — like watching
-  // real aurora shift over minutes compressed into slow seconds.
+  // Each orb has independent drift + breathing pulsation phases.
+  // Wider colour palette: rose, magenta, blue, violet, orange, red.
+  // Larger amplitude and slightly faster frequencies give the dancing motion.
   const orbs = [
-    { r:[176,40,112], xP:0.25, yP:0.30, rW:0.75, rH:0.55, alpha:0.38, sxA:0.07, syA:0.05, sxF:0.000031, syF:0.000019, sxO:0.0   , syO:1.1  },
-    { r:[139,20,107], xP:0.65, yP:0.55, rW:0.80, rH:0.50, alpha:0.30, sxA:0.06, syA:0.04, sxF:0.000027, syF:0.000023, sxO:2.4   , syO:0.7  },
-    { r:[200,72,100], xP:0.50, yP:0.18, rW:0.65, rH:0.45, alpha:0.22, sxA:0.08, syA:0.06, sxF:0.000024, syF:0.000017, sxO:4.7   , syO:3.2  },
-    { r:[224,88, 72], xP:0.80, yP:0.70, rW:0.55, rH:0.40, alpha:0.18, sxA:0.05, syA:0.04, sxF:0.000020, syF:0.000029, sxO:1.8   , syO:5.0  },
-    { r:[155,30, 90], xP:0.15, yP:0.65, rW:0.60, rH:0.42, alpha:0.20, sxA:0.06, syA:0.05, sxF:0.000035, syF:0.000021, sxO:3.3   , syO:2.1  },
+    // rose / pink
+    { r:[194, 65,107], xP:0.25, yP:0.30, rW:0.70, rH:0.50, alpha:0.40, alphaA:0.15, sxA:0.18, syA:0.12, sxF:0.00009 , syF:0.00007 , sxO:0.0  , syO:1.1 , aF:0.00011, aO:0.3 },
+    // deep magenta
+    { r:[139, 26,107], xP:0.65, yP:0.55, rW:0.75, rH:0.55, alpha:0.32, alphaA:0.12, sxA:0.20, syA:0.14, sxF:0.00008 , syF:0.00009 , sxO:2.4  , syO:0.7 , aF:0.00013, aO:1.2 },
+    // violet / purple
+    { r:[110, 60,180], xP:0.40, yP:0.20, rW:0.65, rH:0.45, alpha:0.26, alphaA:0.14, sxA:0.22, syA:0.16, sxF:0.00010 , syF:0.00007 , sxO:4.7  , syO:3.2 , aF:0.00015, aO:2.1 },
+    // electric blue
+    { r:[ 60,100,200], xP:0.80, yP:0.40, rW:0.60, rH:0.45, alpha:0.22, alphaA:0.12, sxA:0.20, syO:0.13, syA:0.13, sxF:0.00007 , syF:0.00011 , sxO:1.8  , syO:5.0 , aF:0.00012, aO:0.8 },
+    // burnt orange
+    { r:[232,115, 90], xP:0.15, yP:0.70, rW:0.55, rH:0.40, alpha:0.20, alphaA:0.10, sxA:0.16, syA:0.14, sxF:0.00012 , syF:0.00009 , sxO:3.3  , syO:2.1 , aF:0.00010, aO:3.4 },
+    // warm red
+    { r:[210, 50, 70], xP:0.70, yP:0.80, rW:0.50, rH:0.40, alpha:0.18, alphaA:0.10, sxA:0.15, syA:0.18, sxF:0.00009 , syF:0.00008 , sxO:5.6  , syO:4.4 , aF:0.00014, aO:1.7 },
+    // soft indigo highlight
+    { r:[140, 80,220], xP:0.50, yP:0.55, rW:0.45, rH:0.35, alpha:0.16, alphaA:0.10, sxA:0.20, syA:0.16, sxF:0.00013 , syF:0.00010 , sxO:0.9  , syO:6.0 , aF:0.00016, aO:4.7 },
   ];
 
   // Draw a single soft radial orb.
@@ -797,15 +834,16 @@ const SCOPES         = [
     const rx = W * o.rW;
     const ry = H * o.rH;
     const [r,g,b] = o.r;
+    // Breathing alpha — each orb pulses brightness independently
+    const a = Math.max(0, o.alpha + Math.sin(t * o.aF + o.aO) * (o.alphaA || 0));
 
-    // Elliptical gradient via ctx scale trick
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.scale(1, ry / rx); // squish to ellipse
+    ctx.scale(1, ry / rx);
     const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-    grad.addColorStop(0.00, `rgba(${r},${g},${b},${o.alpha})`);
-    grad.addColorStop(0.35, `rgba(${r},${g},${b},${(o.alpha * 0.6).toFixed(3)})`);
-    grad.addColorStop(0.65, `rgba(${r},${g},${b},${(o.alpha * 0.18).toFixed(3)})`);
+    grad.addColorStop(0.00, `rgba(${r},${g},${b},${a.toFixed(3)})`);
+    grad.addColorStop(0.35, `rgba(${r},${g},${b},${(a * 0.6).toFixed(3)})`);
+    grad.addColorStop(0.65, `rgba(${r},${g},${b},${(a * 0.18).toFixed(3)})`);
     grad.addColorStop(1.00, `rgba(${r},${g},${b},0)`);
     ctx.fillStyle = grad;
     ctx.beginPath();
@@ -1018,6 +1056,11 @@ function updateTrackUI(item) {
   const art = item.album?.images?.[0]?.url;
   if (art) document.getElementById('now-art').src = art;
   document.getElementById('time-total').textContent  = ms(item.duration_ms);
+  // Remove shimmer now that we have real data
+  ['now-art','playlist-art','track-name','artist-name'].forEach(id => {
+    document.getElementById(id)?.classList.remove('shimmer');
+  });
+  document.getElementById('queue-list').style.visibility = 'visible';
   highlightQueue(item.uri);
   renderQueue();
 }
@@ -1087,7 +1130,7 @@ async function fetchPlaylistTracks() {
 }
 
 function adderAvatar(adder, cls, initialsCls) {
-  if (!adder) return `<div class="${initialsCls}">?</div>`;
+  if (!adder) return ''; // show nothing if no adder info
   if (adder.img) return `<img class="${cls}" src="${adder.img}" alt="${adder.name}" title="Added by ${adder.name}" />`;
   const initials = adder.name.split(' ').map(w=>w[0]).join('').slice(0,2);
   return `<div class="${initialsCls}" title="Added by ${adder.name}">${initials}</div>`;
@@ -1119,6 +1162,8 @@ function renderQueueItems(items) {
 }
 
 async function refreshQueue() {
+  const list = document.getElementById('queue-list');
+  if (list) list.style.visibility = 'hidden';
   try {
     const queueData = await api('/me/player/queue');
     if (queueData?.queue?.length) {
@@ -1128,6 +1173,8 @@ async function refreshQueue() {
     }
   } catch(e) {
     renderQueue();
+  } finally {
+    if (list) list.style.visibility = 'visible';
   }
 }
 
@@ -1238,6 +1285,11 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
 function showPlayer() {
   document.getElementById('login-screen').style.display  = 'none';
   document.getElementById('player-screen').style.display = 'flex';
+  // Add shimmer to elements that need data
+  ['now-art','playlist-art','track-name','artist-name'].forEach(id => {
+    document.getElementById(id)?.classList.add('shimmer');
+  });
+  document.getElementById('queue-list').style.visibility = 'hidden';
 }
 function showError(msg) {
   const el = document.getElementById('error-msg');
@@ -1336,7 +1388,8 @@ document.getElementById('btn-show-playlist').addEventListener('click', () => {
   const token = await getToken();
   if (!token) return; // Stay on login screen
 
-  // Token exists — load SDK which will fire onSpotifyWebPlaybackSDKReady
+  // Token exists — show player shell immediately, SDK loads in background
+  showPlayer();
   loadSDK();
 })();
 </script>
