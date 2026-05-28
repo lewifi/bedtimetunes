@@ -197,15 +197,17 @@
     }
     .playlist-link {
       font-size: 0.55rem;
-      letter-spacing: 0.2em;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.4);
+      color: rgba(255,255,255,0.45);
       text-decoration: none;
-      border-bottom: 1px solid rgba(255,255,255,0.15);
-      padding-bottom: 1px;
+      white-space: nowrap;
       transition: color 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3em;
     }
-    .playlist-link:hover { color: rgba(255,255,255,0.7); }
+    .playlist-link:hover { color: rgba(255,255,255,0.85); }
 
     /* Album art row */
     .art-row {
@@ -734,7 +736,7 @@
           </svg>
         </button>
         <a href="https://open.spotify.com/playlist/6AGKG8W0y4xezu8Cl6Rtkj"
-           target="_blank" class="playlist-link">open in spotify ↗</a>
+           target="_blank" class="playlist-link"><span>open in spotify</span><span style="letter-spacing:0">↗</span></a>
       </div>
     </div>
 
@@ -843,7 +845,7 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-27 21:45 AEST';
+const BUILD_DATE = '2026-05-27 21:55 AEST';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE);
 
 const CLIENT_ID      = 'e86a40e7f7704f33a1ceaffc9e2d16b7';
