@@ -215,7 +215,7 @@
       gap: 1rem;
       width: 100%;
     }
-    #now-art, #playlist-art {
+    #playlist-art {
       width: min(190px, 42vw);
       height: min(190px, 42vw);
       border-radius: 10px;
@@ -223,13 +223,30 @@
       transition: box-shadow 0.6s, transform 0.4s;
       animation: float 8s ease-in-out infinite;
     }
-    #now-art {
+    #now-art { object-fit: cover; }
+    #now-art-wrap {
+      width: min(190px, 42vw);
+      height: min(190px, 42vw);
+      border-radius: 10px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #c2416b, #7b2650);
       box-shadow: 0 0 80px rgba(192, 65, 107, 0.5), 0 20px 60px rgba(0,0,0,0.6);
+      animation: float 8s ease-in-out infinite;
+      transition: box-shadow 0.6s;
     }
-
-    #now-art.playing {
+    #now-art-wrap.playing {
       box-shadow: 0 0 100px rgba(192, 65, 107, 0.7), 0 0 200px rgba(192, 65, 107, 0.2), 0 20px 60px rgba(0,0,0,0.6);
     }
+    #now-art {
+      width: 100%;
+      height: 100%;
+      display: block;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    #now-art.loaded { opacity: 1; }
+
+
     #playlist-art {
       box-shadow: 0 0 40px rgba(192, 65, 107, 0.25), 0 20px 40px rgba(0,0,0,0.5);
       opacity: 0.85;
@@ -506,7 +523,7 @@
       user-select: none;
     }
     .shimmer * { visibility: hidden; }
-    #now-art.shimmer, #playlist-art.shimmer {
+    #now-art-wrap.shimmer, #playlist-art.shimmer {
       border-radius: 10px;
       background: linear-gradient(90deg,
         rgba(255,255,255,0.04) 25%,
@@ -732,7 +749,7 @@
     </div>
 
     <div class="art-row">
-      <img id="now-art" src="./bedtimetunes.jpg" alt="Album Art" />
+      <div id="now-art-wrap"><img id="now-art" alt="Album Art" /></div>
       <div class="logo-tooltip-wrap" style="display:inline-block;">
         <img id="playlist-art" src="./bedtimetunes.jpg" alt="Bedtime Tunes" />
         <span class="logo-tooltip">for you my friend &middot; Pedro &middot; Pit <span style="color:#c2416b">&hearts;</span></span>
@@ -826,7 +843,7 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-27 21:20 AEST';
+const BUILD_DATE = '2026-05-27 21:45 AEST';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE);
 
 const CLIENT_ID      = 'e86a40e7f7704f33a1ceaffc9e2d16b7';
@@ -1166,7 +1183,7 @@ function ms(ms) {
 function setPlaying(playing) {
   document.getElementById('icon-play').style.display  = playing ? 'none' : '';
   document.getElementById('icon-pause').style.display = playing ? ''     : 'none';
-  document.getElementById('now-art').classList.toggle('playing', playing);
+  document.getElementById('now-art-wrap')?.classList.toggle('playing', playing);
 }
 
 let currentTrack = null;
@@ -1177,10 +1194,14 @@ function updateTrackUI(item) {
   document.getElementById('track-name').textContent  = item.name;
   document.getElementById('artist-name').textContent = item.artists.map(a=>a.name).join(', ');
   const art = item.album?.images?.[0]?.url;
-  if (art) document.getElementById('now-art').src = art;
+  if (art) {
+    const artEl = document.getElementById('now-art');
+    artEl.onload = () => artEl.classList.add('loaded');
+    artEl.src = art;
+  }
   document.getElementById('time-total').textContent  = ms(item.duration_ms);
   // Remove shimmer + pulse now that we have real data
-  ['now-art','playlist-art','track-name','artist-name'].forEach(id => {
+  ['now-art-wrap','playlist-art','track-name','artist-name'].forEach(id => {
     document.getElementById(id)?.classList.remove('shimmer');
   });
   document.querySelectorAll('.loading-pulse').forEach(el => el.classList.remove('loading-pulse'));
@@ -1517,7 +1538,7 @@ function showPlayer() {
   document.getElementById('login-screen').style.display  = 'none';
   document.getElementById('player-screen').style.display = 'flex';
   // Add shimmer to track info + artwork
-  ['now-art','playlist-art','track-name','artist-name'].forEach(id => {
+  ['now-art-wrap','playlist-art','track-name','artist-name'].forEach(id => {
     document.getElementById(id)?.classList.add('shimmer');
   });
   document.getElementById('queue-list').classList.add('fading');
