@@ -891,7 +891,7 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-27 23:10 AEST';
+const BUILD_DATE = '2026-05-27 23:40 AEST';
 const VERSION = 'v1.0';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
@@ -1144,8 +1144,11 @@ async function login() {
       if (code) {
         try {
           await exchangeCode(code);
+          sessionStorage.removeItem('pkce_verifier');
           loadSDK();
         } catch(e) {
+          console.error('[login] exchangeCode failed:', e);
+          sessionStorage.removeItem('pkce_verifier');
           showError('Login failed. Try again.');
           resetLoginUI();
         }
@@ -1202,6 +1205,9 @@ function loadSDK() {
 
 async function exchangeCode(code) {
   const verifier = sessionStorage.getItem('pkce_verifier');
+  if (!verifier) {
+    throw new Error('Missing PKCE verifier — session may have been lost. Please try logging in again.');
+  }
   const res = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1213,7 +1219,11 @@ async function exchangeCode(code) {
       code_verifier: verifier,
     }),
   });
-  if (!res.ok) throw new Error('Token exchange failed');
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error('[exchangeCode] Spotify returned', res.status, errBody);
+    throw new Error(`Token exchange failed (${res.status})`);
+  }
   const data = await res.json();
   storeTokens(data);
   return data.access_token;
@@ -1301,8 +1311,11 @@ function updateTrackUI(item) {
   const art = item.album?.images?.[0]?.url;
   if (art) {
     const artEl = document.getElementById('now-art');
-    artEl.onload = () => artEl.classList.add('loaded');
-    artEl.src = art;
+    if (artEl.src !== art) {
+      artEl.classList.remove('loaded');
+      artEl.onload = () => artEl.classList.add('loaded');
+      artEl.src = art;
+    }
   }
   document.getElementById('time-total').textContent  = ms(item.duration_ms);
   // Remove shimmer + pulse now that we have real data
@@ -1505,33 +1518,40 @@ function renderQueue() {
 let playWindowStart = 0; // index into tracks where current chunk began
 
 async function playPlaylist() {
-  if (!tracks.length) return;
+  if (!tracks.length) {
+    console.warn('[playPlaylist] no tracks loaded yet');
+    return;
+  }
 
-  // First-visit: start from a random track. Subsequent visits: resume naturally.
+  // Determine start index from first-visit flag
   const isFirstVisit = !localStorage.getItem('bt_visited');
   let startIdx = 0;
   if (isFirstVisit) {
     startIdx = Math.floor(Math.random() * tracks.length);
-    localStorage.setItem('bt_visited', '1');
-    console.log('[playPlaylist] first visit — starting at random index', startIdx);
+    console.log('[playPlaylist] first visit — random start at index', startIdx);
   }
 
-  // Send up to 100 tracks starting at startIdx
+  // Build the URI list, wrapping around if needed for a full window
   const uris = tracks.slice(startIdx, startIdx + 100).map(t => t.uri);
-  // If we didn't get 100 because we're near the end, wrap around for variety
   if (uris.length < 100 && tracks.length > 100) {
     uris.push(...tracks.slice(0, 100 - uris.length).map(t => t.uri));
   }
   playWindowStart = startIdx;
 
-  // Turn shuffle off briefly so Spotify accepts the fresh uris[] order,
-  // then turn it back on for randomised playback.
+  // Turn shuffle off so Spotify plays our list in our order; re-enable after
   try { await api(`/me/player/shuffle?state=false`, { method: 'PUT' }); } catch(e){}
   const endpoint = deviceId ? `/me/player/play?device_id=${deviceId}` : '/me/player/play';
-  await api(endpoint, {
-    method: 'PUT',
-    body: JSON.stringify({ uris, position_ms: 0 }),
-  });
+  try {
+    await api(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify({ uris, position_ms: 0 }),
+    });
+    // Only mark "visited" after a successful playback start
+    if (isFirstVisit) localStorage.setItem('bt_visited', '1');
+  } catch(e) {
+    console.error('[playPlaylist] play call failed:', e);
+  }
+  // Re-enable shuffle for the rest of the session
   setTimeout(async () => {
     try { await api(`/me/player/shuffle?state=true`, { method: 'PUT' }); } catch(e){}
   }, 500);
@@ -1572,32 +1592,30 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
 
   player.addListener('ready', async ({ device_id }) => {
     deviceId = device_id;
+    console.log('[player] ready, device_id=', device_id);
     // Transfer playback to this device
-    await api('/me/player', {
-      method: 'PUT',
-      body: JSON.stringify({ device_ids: [device_id], play: false }),
-    });
+    try {
+      await api('/me/player', {
+        method: 'PUT',
+        body: JSON.stringify({ device_ids: [device_id], play: false }),
+      });
+    } catch(e) { console.warn('[player] transfer failed:', e); }
+
     await fetchPlaylistTracks();
     showPlayer();
-    // Always shuffle
-    try { await api(`/me/player/shuffle?state=true`, { method: 'PUT' }); } catch(e){}
-    // First visit: random start. Returning visit: try to resume what they had.
-    const isFirstVisit = !localStorage.getItem('bt_visited');
-    if (isFirstVisit) {
+
+    // Check current playback state — if something's already playing, let it continue;
+    // otherwise start fresh (playPlaylist itself handles first-visit randomisation).
+    let alreadyPlaying = false;
+    try {
+      const cur = await api('/me/player');
+      alreadyPlaying = cur && cur.is_playing;
+    } catch(e) { /* no current state, treat as not playing */ }
+
+    if (!alreadyPlaying) {
       await playPlaylist();
-    } else {
-      // Try to resume — if Spotify has no recent state, fall back to playlist start
-      try {
-        const cur = await api('/me/player');
-        if (!cur || !cur.is_playing) {
-          // Either no playback or paused — start the playlist
-          await playPlaylist();
-        }
-        // Else Spotify is already playing somewhere; player_state_changed will sync us
-      } catch(e) {
-        await playPlaylist();
-      }
     }
+    // If alreadyPlaying, player_state_changed will sync UI when state arrives
   });
 
   player.addListener('not_ready', () => console.log('Device offline'));
@@ -1786,13 +1804,30 @@ document.getElementById('volume-slider').addEventListener('input', e => {
   const code   = params.get('code');
   const error  = params.get('error');
 
-  if (error) { showError('Spotify login cancelled.'); return; }
+  // ALWAYS clear auth params from URL first, before anything async, to prevent
+  // the same code being re-used if the user refreshes mid-exchange.
+  if (code || error) {
+    history.replaceState({}, '', window.location.pathname);
+  }
+
+  if (error) {
+    showError('Spotify login cancelled.');
+    sessionStorage.removeItem('pkce_verifier');
+    return;
+  }
 
   if (code) {
-    history.replaceState({}, '', window.location.pathname);
+    // Show loading state immediately so the user has feedback during token exchange
+    showPlayer();
     try {
       await exchangeCode(code);
+      sessionStorage.removeItem('pkce_verifier'); // consumed
     } catch(e) {
+      console.error('[boot] exchangeCode failed:', e);
+      sessionStorage.removeItem('pkce_verifier');
+      // Revert to login screen with error
+      document.getElementById('player-screen').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
       showError('Login failed. Try again.');
       return;
     }
