@@ -204,11 +204,17 @@
     }
 
     .player-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
       width: 100%;
-      gap: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .header-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+      width: 100%;
     }
     .player-title {
       font-family: 'Barlow', sans-serif;
@@ -216,19 +222,23 @@
       font-size: 1rem;
       letter-spacing: 0.22em;
       text-transform: uppercase;
+      white-space: nowrap;
     }
+    /* Stats line — flows as one wrap-friendly line; separators are inline */
     .player-stats {
       font-family: 'Barlow', sans-serif;
       font-size: 0.5rem;
-      letter-spacing: 0.22em;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
       color: rgba(255,255,255,0.3);
-      margin-top: 0.3rem;
+      line-height: 1.6;
+      text-align: left;
     }
     .player-stats .sep {
-      color: rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.12);
       margin: 0 0.45em;
     }
+    /* Open in spotify link */
     .playlist-link {
       font-size: 0.55rem;
       letter-spacing: 0.18em;
@@ -238,8 +248,13 @@
       white-space: nowrap;
       transition: color 0.2s;
       display: inline-flex;
-      align-items: center;
-      gap: 0.3em;
+      align-items: baseline;
+      gap: 0.35em;
+    }
+    .playlist-link .arrow {
+      letter-spacing: 0;
+      position: relative;
+      top: 0.05em;
     }
     .playlist-link:hover { color: rgba(255,255,255,0.85); }
 
@@ -573,9 +588,9 @@
     /* Header actions */
     .header-actions {
       display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 0.5rem;
+      align-items: center;
+      gap: 0.8rem;
+      flex-shrink: 0;
     }
     .icon-btn {
       background: none;
@@ -766,23 +781,23 @@
   <!-- PLAYER -->
   <div id="player-screen">
     <div class="player-header">
-      <div>
+      <div class="header-row-top">
         <span class="player-title">Bedtime Tunes</span>
-        <div class="player-stats" id="player-stats">since 2006</div>
+        <div class="header-actions">
+          <button class="icon-btn" id="btn-share" title="Share" aria-label="Share">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+          </button>
+          <a href="https://open.spotify.com/playlist/6AGKG8W0y4xezu8Cl6Rtkj"
+             target="_blank" class="playlist-link"><span class="arrow">↗</span><span>open in spotify</span></a>
+        </div>
       </div>
-      <div class="header-actions">
-        <button class="icon-btn" id="btn-share" title="Share" aria-label="Share">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="18" cy="5" r="3"></circle>
-            <circle cx="6" cy="12" r="3"></circle>
-            <circle cx="18" cy="19" r="3"></circle>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-          </svg>
-        </button>
-        <a href="https://open.spotify.com/playlist/6AGKG8W0y4xezu8Cl6Rtkj"
-           target="_blank" class="playlist-link"><span style="letter-spacing:0">↗</span><span>open in spotify</span></a>
-      </div>
+      <div class="player-stats" id="player-stats">since 2006</div>
     </div>
 
     <!-- Share fallback menu (shown on desktop where Web Share isn't supported) -->
@@ -891,7 +906,7 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-27 23:40 AEST';
+const BUILD_DATE = '2026-05-28 00:00 AEST';
 const VERSION = 'v1.0';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
