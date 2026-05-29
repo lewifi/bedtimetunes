@@ -925,8 +925,8 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-28 03:55 AEST';
-const VERSION = 'v1.3.1';
+const BUILD_DATE = '2026-05-28 04:10 AEST';
+const VERSION = 'v1.3.2';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
 // Populate version on both login + footer
@@ -2084,9 +2084,10 @@ document.getElementById('login-btn').addEventListener('click', login);
 document.getElementById('btn-play').addEventListener('click', async () => {
   if (!player) return;
   try {
-    const state = await player.getCurrentState();
-    // First play after page load — kick off playback from the pending track
-    if (!state && pendingStartUri) {
+    // If we have a pendingStartUri, ALWAYS start that track regardless of any
+    // existing Spotify state. This handles fresh page loads where Spotify
+    // remembers a previous track from another session.
+    if (pendingStartUri) {
       await playPlaylist(pendingStartUri);
       pendingStartUri = null;
       // Strip ?track= from URL once playback actually starts
@@ -2095,14 +2096,15 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       }
       return;
     }
-    if (state?.paused) {
+    // Normal play/pause toggle for already-playing sessions
+    const state = await player.getCurrentState();
+    if (!state || state.paused) {
       await player.resume();
     } else {
       await player.pause();
     }
   } catch(e) {
     console.error('[play] click failed:', e);
-    // Fallback: try a fresh playPlaylist
     if (pendingStartUri) {
       playPlaylist(pendingStartUri);
       pendingStartUri = null;
