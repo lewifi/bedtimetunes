@@ -925,8 +925,8 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-28 01:45 AEST';
-const VERSION = 'v1.2.2';
+const BUILD_DATE = '2026-05-28 02:20 AEST';
+const VERSION = 'v1.2.4';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
 // Populate version on both login + footer
@@ -1267,52 +1267,73 @@ async function login() {
     return;
   }
 
-  // Show loading state immediately when popup opens, so the UI doesn't sit blank
   showPlayer();
+  console.log('[login] popup opened, REDIRECT_URI=', REDIRECT_URI);
 
-  // Poll for popup to land on our redirect URI
+  // Helper to finish the auth flow once we have a code
   let captured = false;
-  const poll = setInterval(async () => {
+  async function completeAuth(code, errParam) {
     if (captured) return;
-
-    // Try to read the popup URL — only succeeds when popup is on our origin
-    let popupUrl = null;
-    try { popupUrl = popup.location.href; } catch(e) { /* cross-origin, ignore */ }
-
-    if (popupUrl && popupUrl.startsWith(REDIRECT_URI)) {
-      captured = true;
-      clearInterval(poll);
-      const params = new URLSearchParams(new URL(popupUrl).search);
-      popup.close();
-      const code = params.get('code');
-      const popupError = params.get('error');
-      if (code) {
-        try {
-          await exchangeCode(code);
-          sessionStorage.removeItem('pkce_verifier');
-          loadSDK();
-        } catch(e) {
-          console.error('[login] exchangeCode failed:', e);
-          sessionStorage.removeItem('pkce_verifier');
-          showError('Login failed. Try again.');
-          resetLoginUI();
-        }
-      } else if (popupError) {
-        showError('Login cancelled.');
-        resetLoginUI();
-      } else {
+    captured = true;
+    clearInterval(poll);
+    try { popup.close(); } catch(e) {}
+    if (code) {
+      console.log('[login] code captured, exchanging…');
+      try {
+        await exchangeCode(code);
+        sessionStorage.removeItem('pkce_verifier');
+        console.log('[login] exchange success, loading SDK');
+        loadSDK();
+      } catch(e) {
+        console.error('[login] exchangeCode failed:', e);
+        sessionStorage.removeItem('pkce_verifier');
         showError('Login failed. Try again.');
         resetLoginUI();
       }
-      return;
+    } else if (errParam) {
+      console.warn('[login] popup returned error:', errParam);
+      showError('Login cancelled.');
+      resetLoginUI();
+    } else {
+      showError('Login failed. Try again.');
+      resetLoginUI();
+    }
+  }
+
+  // BACKUP: listen for postMessage from popup (if a small bootstrap can send one)
+  function onMsg(e) {
+    if (!e.data || e.data.type !== 'bt-auth') return;
+    if (e.origin !== window.location.origin) return;
+    console.log('[login] received auth via postMessage');
+    window.removeEventListener('message', onMsg);
+    completeAuth(e.data.code, e.data.error);
+  }
+  window.addEventListener('message', onMsg);
+
+  // PRIMARY: poll the popup URL
+  const poll = setInterval(async () => {
+    if (captured) return;
+
+    let popupUrl = null;
+    try { popupUrl = popup.location.href; } catch(e) { /* cross-origin, keep polling */ }
+
+    if (popupUrl) {
+      console.log('[login] popup url visible:', popupUrl);
+      if (popupUrl.startsWith(REDIRECT_URI) || popupUrl.includes('code=') || popupUrl.includes('error=')) {
+        const u = new URL(popupUrl);
+        const code = u.searchParams.get('code');
+        const errParam = u.searchParams.get('error');
+        await completeAuth(code, errParam);
+        return;
+      }
     }
 
-    // Popup was closed by user without completing auth
     if (popup.closed && !captured) {
       clearInterval(poll);
-      // Give one last beat in case URL change + close happened simultaneously
+      console.log('[login] popup closed without capture, waiting 500ms grace…');
       setTimeout(() => {
         if (!captured) {
+          console.warn('[login] no capture after grace period');
           showError('Login cancelled.');
           resetLoginUI();
         }
@@ -1729,49 +1750,41 @@ async function playPlaylist(forcedStartUri) {
     console.log('[playPlaylist] first visit — random start at index', startIdx);
   }
 
-  const uris = tracks.slice(startIdx, startIdx + 100).map(t => t.uri);
-  if (uris.length < 100 && tracks.length > 100) {
-    uris.push(...tracks.slice(0, 100 - uris.length).map(t => t.uri));
+  const startUri = tracks[startIdx].uri;
+  // Queue tail for the session — next tracks (random order so shuffle still feels natural)
+  const tail = tracks.slice(startIdx + 1, startIdx + 50);
+  // Shuffle the tail so playback feels random even without Spotify's shuffle
+  for (let i = tail.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [tail[i], tail[j]] = [tail[j], tail[i]];
   }
   playWindowStart = startIdx;
-  const endpoint = deviceId ? `/me/player/play?device_id=${deviceId}` : '/me/player/play';
-  const shuffleBase = `/me/player/shuffle?device_id=${deviceId}`;
 
-  // STEP 1: Play a SINGLE track first. With only one URI, shuffle can't randomise
-  // anything — Spotify must play this exact track.
+  const endpoint = deviceId ? `/me/player/play?device_id=${deviceId}` : '/me/player/play';
+
+  // STEP 1: Play the single target track. Only one URI = nothing for shuffle to randomise.
   try {
     await api(endpoint, {
       method: 'PUT',
-      body: JSON.stringify({ uris: [uris[0]], position_ms: 0 }),
+      body: JSON.stringify({ uris: [startUri], position_ms: 0 }),
     });
-    console.log('[playPlaylist] phase 1 — single track started:', uris[0]);
+    console.log('[playPlaylist] started:', tracks[startIdx].name);
     if (isFirstVisit) localStorage.setItem('bt_visited', '1');
   } catch(e) {
-    console.error('[playPlaylist] phase 1 play failed:', e);
+    console.error('[playPlaylist] play call failed:', e);
     return;
   }
 
-  // STEP 2: Now that playback is active, force shuffle off, then play the full list.
+  // STEP 2: After playback is active, add the (pre-shuffled) tail to the queue.
+  // Queue endpoint adds AFTER current track and is NOT affected by shuffle.
   setTimeout(async () => {
-    try { await api(`${shuffleBase}&state=false`, { method: 'PUT' }); }
-    catch(e) { console.warn('[playPlaylist] shuffle off failed:', e.message); }
-
-    // STEP 3: Send the full uris[] list so the queue extends past the single track
-    try {
-      await api(endpoint, {
-        method: 'PUT',
-        body: JSON.stringify({ uris, position_ms: 0 }),
-      });
-      console.log('[playPlaylist] phase 2 — full queue loaded, first uri:', uris[0]);
-    } catch(e) {
-      console.warn('[playPlaylist] phase 2 queue load failed (non-fatal):', e.message);
+    for (const t of tail) {
+      try {
+        await api(`/me/player/queue?uri=${encodeURIComponent(t.uri)}&device_id=${deviceId}`, { method: 'POST' });
+      } catch(e) { /* silent — don't block the user */ }
     }
-
-    // STEP 4: Re-enable shuffle for the rest of the session
-    setTimeout(async () => {
-      try { await api(`${shuffleBase}&state=true`, { method: 'PUT' }); } catch(e){}
-    }, 500);
-  }, 700);
+    console.log('[playPlaylist] tail queued (' + tail.length + ' tracks)');
+  }, 800);
 }
 
 // Check if we're approaching end of the current play window; if so, queue more.
