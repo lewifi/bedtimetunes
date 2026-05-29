@@ -925,8 +925,8 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-28 04:10 AEST';
-const VERSION = 'v1.3.2';
+const BUILD_DATE = '2026-05-28 04:25 AEST';
+const VERSION = 'v1.3.3';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
 // Populate version on both login + footer
@@ -1760,13 +1760,29 @@ async function playPlaylist(forcedStartUri) {
 
   const endpoint = deviceId ? `/me/player/play?device_id=${deviceId}` : '/me/player/play';
 
-  // STEP 0: Force shuffle OFF first. The SDK has already activated our device by
-  // this point, so the shuffle endpoint should accept this call. If it doesn't,
-  // we still proceed — the single-URI play in step 1 is robust enough.
+  // STEP 0a: Transfer playback to OUR device explicitly. This breaks any
+  // existing session/context Spotify might have remembered from another device.
+  if (deviceId) {
+    try {
+      await api('/me/player', {
+        method: 'PUT',
+        body: JSON.stringify({ device_ids: [deviceId], play: false }),
+      });
+    } catch(e) { /* fine */ }
+  }
+
+  // STEP 0b: Pause anything currently playing to fully break Spotify's existing context
+  if (deviceId) {
+    try {
+      await api(`/me/player/pause?device_id=${deviceId}`, { method: 'PUT' });
+    } catch(e) { /* fine — may already be paused or no active device */ }
+  }
+
+  // STEP 0c: Force shuffle OFF.
   if (deviceId) {
     try {
       await api(`/me/player/shuffle?state=false&device_id=${deviceId}`, { method: 'PUT' });
-    } catch(e) { /* fine — Spotify may not have a device active yet, single-URI play handles it */ }
+    } catch(e) { /* fine */ }
   }
 
   // STEP 1: Play the single target track. Only one URI = nothing for shuffle to randomise.
