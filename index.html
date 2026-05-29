@@ -384,6 +384,10 @@
       color: rgba(255,255,255,0.35);
     }
 
+    /* Restart button spin feedback */
+    @keyframes restart-spin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+    #btn-restart.spinning svg { animation: restart-spin 0.7s ease-in-out; }
+
     /* Controls */
     .controls {
       display: flex;
@@ -931,8 +935,8 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-29 16:10 AEST';
-const VERSION = 'v1.4.1';
+const BUILD_DATE = '2026-05-29 16:40 AEST';
+const VERSION = 'v1.4.3';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
 // Populate version on both login + footer
@@ -2104,11 +2108,34 @@ document.querySelectorAll('.share-opt').forEach(btn => {
 document.getElementById('login-btn').addEventListener('click', login);
 
 document.getElementById('btn-restart').addEventListener('click', async () => {
-  if (!tracks.length) return;
-  // Force a new random starting track — bypass first-visit + shared link logic
-  const randIdx = Math.floor(Math.random() * tracks.length);
-  await playPlaylist(tracks[randIdx].uri);
+  if (!tracks.length || !deviceId) return;
+  const btn = document.getElementById('btn-restart');
+  btn.classList.add('spinning');
+
+  // Start fresh = first track of the playlist
+  const startUri = tracks[0].uri;
   pendingStartUri = null;
+
+  try {
+    await api(`/me/player/play?device_id=${deviceId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ uris: [startUri], position_ms: 0 }),
+    });
+  } catch(e) {
+    console.error('[restart] play failed:', e);
+  }
+
+  // Queue the next 30 tracks in playlist order (no shuffle on restart)
+  const tail = tracks.slice(1, 31);
+  setTimeout(async () => {
+    for (const t of tail) {
+      try {
+        await api(`/me/player/queue?uri=${encodeURIComponent(t.uri)}&device_id=${deviceId}`, { method: 'POST' });
+      } catch(e) { /* silent */ }
+    }
+  }, 600);
+
+  setTimeout(() => btn.classList.remove('spinning'), 700);
 });
 
 document.getElementById('btn-play').addEventListener('click', async () => {
