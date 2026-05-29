@@ -16,7 +16,7 @@
   <meta property="og:title" content="Bedtime Tunes — tunes to snooze to" />
   <meta property="og:description" content="A curated bedtime playlist running since 2006. Quiet music for falling asleep, beneath the aurora." />
   <meta property="og:url" content="https://bedtimetunes.com/" />
-  <meta property="og:image" content="https://bedtimetunes.com/bedtimetunes.jpg" />
+  <meta property="og:image" content="https://bedtimetunes.com/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
 
@@ -24,7 +24,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Bedtime Tunes — tunes to snooze to" />
   <meta name="twitter:description" content="A curated bedtime playlist running since 2006. Quiet music for falling asleep, beneath the aurora." />
-  <meta name="twitter:image" content="https://bedtimetunes.com/bedtimetunes.jpg" />
+  <meta name="twitter:image" content="https://bedtimetunes.com/og-image.png" />
 
   <!-- Theme colour for mobile browsers -->
   <meta name="theme-color" content="#1a0a1e" />
@@ -61,6 +61,12 @@
       position: fixed;
       inset: 0;
       z-index: 0;
+    }
+    #particles {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
     }
 
     /* ── Stars ── */
@@ -382,7 +388,8 @@
     .controls {
       display: flex;
       align-items: center;
-      gap: 2rem;
+      justify-content: center;
+      gap: 2.5rem;
     }
     .ctrl-btn {
       background: none;
@@ -610,6 +617,12 @@
       border-color: rgba(194,65,107,0.4);
       background: rgba(194,65,107,0.08);
     }
+    .icon-btn.saved {
+      color: #c2416b;
+      border-color: rgba(194,65,107,0.5);
+      background: rgba(194,65,107,0.18);
+    }
+    .icon-btn.saved svg { fill: #c2416b; stroke: #c2416b; }
 
     /* Share fallback menu — desktop browsers without Web Share API */
     .share-menu {
@@ -750,6 +763,7 @@
 <body>
 
 <canvas id="aurora"></canvas>
+<canvas id="particles"></canvas>
 
 <div class="stars" id="stars"></div>
 
@@ -784,6 +798,11 @@
       <div class="header-row-top">
         <span class="player-title">Bedtime Tunes</span>
         <div class="header-actions">
+          <button class="icon-btn" id="btn-save" title="Save to Spotify" aria-label="Save to Spotify">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
           <button class="icon-btn" id="btn-share" title="Share" aria-label="Share">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="18" cy="5" r="3"></circle>
@@ -906,7 +925,7 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-28 00:00 AEST';
+const BUILD_DATE = '2026-05-28 00:50 AEST';
 const VERSION = 'v1.0';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
@@ -930,6 +949,8 @@ const SCOPES         = [
   'user-modify-playback-state',
   'playlist-read-private',
   'playlist-read-collaborative',
+  'playlist-modify-public',
+  'playlist-modify-private',
 ].join(' ');
 
 // ─────────────────────────────────────────────
@@ -978,12 +999,46 @@ const SCOPES         = [
   // Draw a single soft radial orb.
   // We use a large radial gradient that falls to 0 alpha at the edge —
   // no hard boundary, just an infinite feather.
+  // Time-of-day colour tint: hour 0-6 = cool/violet, 6-12 = dawn warm, 12-18 = day rose, 18-24 = dusk amber
+  function getTimeTint() {
+    const h = new Date().getHours() + new Date().getMinutes() / 60;
+    // Smooth interpolation across 24h cycle. Returns RGB multipliers [r, g, b]
+    // Anchors: 0 = cool, 6 = warm pink/orange, 12 = balanced rose, 18 = warm amber, 24 = cool again
+    const anchors = [
+      { h: 0,  rgb: [0.75, 0.78, 1.10] }, // midnight cool/violet
+      { h: 4,  rgb: [0.80, 0.78, 1.05] },
+      { h: 7,  rgb: [1.15, 0.95, 0.85] }, // dawn warm
+      { h: 12, rgb: [1.00, 0.95, 0.95] }, // midday neutral
+      { h: 17, rgb: [1.15, 0.90, 0.80] }, // late afternoon warm
+      { h: 20, rgb: [1.20, 0.85, 0.80] }, // dusk amber
+      { h: 23, rgb: [0.85, 0.80, 1.05] },
+      { h: 24, rgb: [0.75, 0.78, 1.10] },
+    ];
+    let a, b;
+    for (let i = 0; i < anchors.length - 1; i++) {
+      if (h >= anchors[i].h && h <= anchors[i+1].h) { a = anchors[i]; b = anchors[i+1]; break; }
+    }
+    if (!a) { a = anchors[0]; b = anchors[1]; }
+    const t = (h - a.h) / (b.h - a.h);
+    return [
+      a.rgb[0] + (b.rgb[0] - a.rgb[0]) * t,
+      a.rgb[1] + (b.rgb[1] - a.rgb[1]) * t,
+      a.rgb[2] + (b.rgb[2] - a.rgb[2]) * t,
+    ];
+  }
+  let timeTint = getTimeTint();
+  // Refresh every 5 minutes — tint shifts gradually
+  setInterval(() => { timeTint = getTimeTint(); }, 5 * 60 * 1000);
+
   function drawOrb(o, t) {
     const cx = W * (o.xP + Math.sin(t * o.sxF + o.sxO) * o.sxA);
     const cy = H * (o.yP + Math.sin(t * o.syF + o.syO) * o.syA);
     const rx = W * o.rW;
     const ry = H * o.rH;
-    const [r,g,b] = o.r;
+    // Apply time-of-day tint, clamp to 0-255
+    const r = Math.min(255, o.r[0] * timeTint[0]);
+    const g = Math.min(255, o.r[1] * timeTint[1]);
+    const b = Math.min(255, o.r[2] * timeTint[2]);
     // Breathing alpha — each orb pulses brightness independently
     const a = Math.max(0, o.alpha + Math.sin(t * o.aF + o.aO) * (o.alphaA || 0));
 
@@ -1090,6 +1145,81 @@ const SCOPES         = [
     `;
     container.appendChild(s);
   }
+})();
+
+// ─────────────────────────────────────────────
+// Rising particles (ambient dust motes)
+// ─────────────────────────────────────────────
+(function initParticles() {
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+  const count = window.innerWidth < 600 ? 30 : 60;
+  const particles = [];
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = canvas.width  = window.innerWidth * dpr;
+    H = canvas.height = window.innerHeight * dpr;
+    canvas.style.width  = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resize, 150);
+  });
+  resize();
+
+  // Reset a particle to start from below the screen
+  function spawn(p, fromBottom = true) {
+    p.x = Math.random() * window.innerWidth;
+    p.y = fromBottom ? window.innerHeight + Math.random() * 50 : Math.random() * window.innerHeight;
+    p.size = Math.random() * 1.5 + 0.4;
+    p.speed = Math.random() * 0.15 + 0.05; // very slow upward drift
+    p.swayAmp = Math.random() * 30 + 10;   // horizontal sway
+    p.swayFreq = Math.random() * 0.001 + 0.0005;
+    p.swayPhase = Math.random() * Math.PI * 2;
+    p.alpha = Math.random() * 0.5 + 0.15;
+    p.alphaSpeed = Math.random() * 0.0008 + 0.0003;
+    p.alphaPhase = Math.random() * Math.PI * 2;
+    p.baseX = p.x;
+  }
+
+  for (let i = 0; i < count; i++) {
+    const p = {};
+    spawn(p, false); // initial spawn anywhere on screen
+    particles.push(p);
+  }
+
+  let rafId;
+  function frame(ts) {
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    particles.forEach(p => {
+      // Drift upward
+      p.y -= p.speed;
+      // Sway horizontally with sine
+      p.x = p.baseX + Math.sin(ts * p.swayFreq + p.swayPhase) * p.swayAmp;
+      // Pulse alpha
+      const a = p.alpha * (0.6 + Math.sin(ts * p.alphaSpeed + p.alphaPhase) * 0.4);
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 220, 200, ${a.toFixed(3)})`;
+      ctx.fill();
+
+      // Respawn from bottom when off-screen at top
+      if (p.y < -10) spawn(p, true);
+    });
+    rafId = requestAnimationFrame(frame);
+  }
+  rafId = requestAnimationFrame(frame);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelAnimationFrame(rafId);
+    else rafId = requestAnimationFrame(frame);
+  });
 })();
 
 // ─────────────────────────────────────────────
@@ -1310,6 +1440,47 @@ function ms(ms) {
   return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 }
 
+function applyAlbumGlow(imgEl) {
+  // Sample average colour from the image and apply as glow on the wrapper
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(imgEl, 0, 0, 32, 32);
+    const data = ctx.getImageData(0, 0, 32, 32).data;
+    let r = 0, g = 0, b = 0, count = 0;
+    // Weight toward saturated pixels for a more representative colour
+    for (let i = 0; i < data.length; i += 4) {
+      const pr = data[i], pg = data[i+1], pb = data[i+2];
+      const max = Math.max(pr, pg, pb);
+      const min = Math.min(pr, pg, pb);
+      const sat = max === 0 ? 0 : (max - min) / max;
+      const weight = 0.3 + sat * 0.7; // saturated pixels count more
+      r += pr * weight; g += pg * weight; b += pb * weight;
+      count += weight;
+    }
+    r = Math.round(r / count);
+    g = Math.round(g / count);
+    b = Math.round(b / count);
+    // Boost brightness so dark covers still glow
+    const brightness = (r + g + b) / 3;
+    if (brightness < 100) {
+      const boost = 100 / Math.max(brightness, 30);
+      r = Math.min(255, r * boost);
+      g = Math.min(255, g * boost);
+      b = Math.min(255, b * boost);
+    }
+    const wrap = document.getElementById('now-art-wrap');
+    if (wrap) {
+      wrap.style.boxShadow = `0 0 80px rgba(${r|0},${g|0},${b|0},0.55), 0 0 160px rgba(${r|0},${g|0},${b|0},0.18), 0 20px 60px rgba(0,0,0,0.6)`;
+      wrap.style.transition = 'box-shadow 1.5s ease';
+    }
+  } catch(e) {
+    // CORS may block getImageData on some Spotify CDN images — silent fallback to default glow
+  }
+}
+
 function setPlaying(playing) {
   document.getElementById('icon-play').style.display  = playing ? 'none' : '';
   document.getElementById('icon-pause').style.display = playing ? ''     : 'none';
@@ -1328,7 +1499,11 @@ function updateTrackUI(item) {
     const artEl = document.getElementById('now-art');
     if (artEl.src !== art) {
       artEl.classList.remove('loaded');
-      artEl.onload = () => artEl.classList.add('loaded');
+      artEl.crossOrigin = 'anonymous';
+      artEl.onload = () => {
+        artEl.classList.add('loaded');
+        applyAlbumGlow(artEl);
+      };
       artEl.src = art;
     }
   }
@@ -1618,6 +1793,7 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
 
     await fetchPlaylistTracks();
     showPlayer();
+    checkSavedState();
 
     // Check current playback state — if something's already playing, let it continue;
     // otherwise start fresh (playPlaylist itself handles first-visit randomisation).
@@ -1725,6 +1901,37 @@ document.getElementById('btn-share-track').addEventListener('click', async () =>
   }
   // Desktop fallback — reuse the same menu but with track data temporarily swapped in
   openShareMenu(data);
+});
+
+// ── Save to Spotify (follow playlist) ──
+async function checkSavedState() {
+  try {
+    const me = await api('/me');
+    const data = await api(`/playlists/${PLAYLIST_ID}/followers/contains?ids=${me.id}`);
+    const isSaved = Array.isArray(data) && data[0];
+    document.getElementById('btn-save')?.classList.toggle('saved', !!isSaved);
+  } catch(e) { /* silent */ }
+}
+
+document.getElementById('btn-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save');
+  const wasSaved = btn.classList.contains('saved');
+  // Optimistic toggle
+  btn.classList.toggle('saved');
+  try {
+    if (wasSaved) {
+      await api(`/playlists/${PLAYLIST_ID}/followers`, { method: 'DELETE' });
+    } else {
+      await api(`/playlists/${PLAYLIST_ID}/followers`, {
+        method: 'PUT',
+        body: JSON.stringify({ public: true }),
+      });
+    }
+  } catch(e) {
+    // Revert on failure
+    btn.classList.toggle('saved');
+    console.error('[save] toggle failed', e);
+  }
 });
 
 document.getElementById('btn-share').addEventListener('click', async () => {
