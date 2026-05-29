@@ -925,8 +925,8 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-28 02:40 AEST';
-const VERSION = 'v1.2.5';
+const BUILD_DATE = '2026-05-28 03:40 AEST';
+const VERSION = 'v1.3.0';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
 // Populate version on both login + footer
@@ -1453,6 +1453,7 @@ async function api(path, opts = {}) {
 // Player state
 // ─────────────────────────────────────────────
 let player, deviceId;
+let pendingStartUri = null; // Track to play when user first hits play
 let tracks = [], trackItems = [], currentUri = null;
 let progressInterval;
 
@@ -1762,6 +1763,15 @@ async function playPlaylist(forcedStartUri) {
 
   const endpoint = deviceId ? `/me/player/play?device_id=${deviceId}` : '/me/player/play';
 
+  // STEP 0: Force shuffle OFF first. The SDK has already activated our device by
+  // this point, so the shuffle endpoint should accept this call. If it doesn't,
+  // we still proceed — the single-URI play in step 1 is robust enough.
+  if (deviceId) {
+    try {
+      await api(`/me/player/shuffle?state=false&device_id=${deviceId}`, { method: 'PUT' });
+    } catch(e) { /* fine — Spotify may not have a device active yet, single-URI play handles it */ }
+  }
+
   // STEP 1: Play the single target track. Only one URI = nothing for shuffle to randomise.
   try {
     await api(endpoint, {
@@ -1835,28 +1845,38 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
     showPlayer();
     checkSavedState();
 
-    // Check current playback state — if something's already playing, let it continue;
-    // otherwise start fresh (playPlaylist itself handles first-visit randomisation).
+    // Pre-load the upcoming track artwork so the player isn't blank.
+    // But DO NOT auto-play — wait for the user to click play. This avoids
+    // browser autoplay restrictions and unexpected music for visitors.
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedTrackId = urlParams.get('track');
+    pendingStartUri = sharedTrackId ? `spotify:track:${sharedTrackId}` : null;
+
+    // If a track is already playing on another device, sync to it.
+    // Otherwise, show the first track's metadata as a preview but don't start audio.
     let alreadyPlaying = false;
     try {
       const cur = await api('/me/player');
       alreadyPlaying = cur && cur.is_playing;
-    } catch(e) { /* no current state, treat as not playing */ }
+    } catch(e) { /* no current state */ }
 
-    // Check URL for shared track param
-    const urlParams = new URLSearchParams(window.location.search);
-    const sharedTrackId = urlParams.get('track');
-    const sharedTrackUri = sharedTrackId ? `spotify:track:${sharedTrackId}` : null;
-
-    if (sharedTrackUri) {
-      // Always honour shared track even if something's playing — user clicked a link
-      await playPlaylist(sharedTrackUri);
-      // Clean the URL so refresh doesn't re-trigger
-      history.replaceState({}, '', window.location.pathname);
-    } else if (!alreadyPlaying) {
-      await playPlaylist();
+    if (!alreadyPlaying && tracks.length) {
+      // Pre-fill the UI with the track that WILL play when they hit play
+      let previewIdx = 0;
+      if (pendingStartUri) {
+        const i = tracks.findIndex(t => t.uri === pendingStartUri);
+        if (i !== -1) previewIdx = i;
+      } else if (!localStorage.getItem('bt_visited')) {
+        previewIdx = Math.floor(Math.random() * tracks.length);
+        // Remember for the actual play call (so it stays consistent)
+        pendingStartUri = tracks[previewIdx].uri;
+      } else {
+        pendingStartUri = tracks[0].uri;
+      }
+      // Show that track's info in the UI without playing it
+      updateTrackUI(tracks[previewIdx]);
+      setPlaying(false);
     }
-    // If alreadyPlaying, player_state_changed will sync UI when state arrives
   });
 
   player.addListener('not_ready', () => console.log('Device offline'));
@@ -2053,7 +2073,36 @@ document.querySelectorAll('.share-opt').forEach(btn => {
 
 document.getElementById('login-btn').addEventListener('click', login);
 
-document.getElementById('btn-play').addEventListener('click', () => player?.togglePlay());
+document.getElementById('btn-play').addEventListener('click', async () => {
+  if (!player) return;
+  try {
+    const state = await player.getCurrentState();
+    // First play after page load — kick off playback from the pending track
+    if (!state && pendingStartUri) {
+      await playPlaylist(pendingStartUri);
+      pendingStartUri = null;
+      // Strip ?track= from URL once playback actually starts
+      if (new URLSearchParams(window.location.search).get('track')) {
+        history.replaceState({}, '', window.location.pathname);
+      }
+      return;
+    }
+    if (state?.paused) {
+      await player.resume();
+    } else {
+      await player.pause();
+    }
+  } catch(e) {
+    console.error('[play] click failed:', e);
+    // Fallback: try a fresh playPlaylist
+    if (pendingStartUri) {
+      playPlaylist(pendingStartUri);
+      pendingStartUri = null;
+    } else {
+      player.togglePlay();
+    }
+  }
+});
 document.getElementById('btn-next').addEventListener('click', () => player?.nextTrack());
 
 document.getElementById('progress-bar').addEventListener('input', e => {
