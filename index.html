@@ -925,8 +925,8 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-28 01:10 AEST';
-const VERSION = 'v1.2.0';
+const BUILD_DATE = '2026-05-28 01:25 AEST';
+const VERSION = 'v1.2.1';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
 // Populate version on both login + footer
@@ -1713,7 +1713,6 @@ async function playPlaylist(forcedStartUri) {
     return;
   }
 
-  // Highest priority: a track URI passed in (e.g. from shared link)
   let startIdx = 0;
   const isFirstVisit = !localStorage.getItem('bt_visited');
 
@@ -1730,30 +1729,40 @@ async function playPlaylist(forcedStartUri) {
     console.log('[playPlaylist] first visit — random start at index', startIdx);
   }
 
-  // Build the URI list, wrapping around if needed for a full window
+  // Build URI list, wrap if near end
   const uris = tracks.slice(startIdx, startIdx + 100).map(t => t.uri);
   if (uris.length < 100 && tracks.length > 100) {
     uris.push(...tracks.slice(0, 100 - uris.length).map(t => t.uri));
   }
   playWindowStart = startIdx;
 
-  // Turn shuffle off so Spotify plays our list in our order; re-enable after
-  try { await api(`/me/player/shuffle?state=false`, { method: 'PUT' }); } catch(e){}
+  // STEP 1: Start playback first. Sending uris[] directly plays them in OUR order.
+  // (We CANNOT toggle shuffle before playback exists — Spotify 404s with no active device.)
   const endpoint = deviceId ? `/me/player/play?device_id=${deviceId}` : '/me/player/play';
   try {
     await api(endpoint, {
       method: 'PUT',
       body: JSON.stringify({ uris, position_ms: 0 }),
     });
-    // Only mark "visited" after a successful playback start
+    console.log('[playPlaylist] play sent, first uri:', uris[0]);
     if (isFirstVisit) localStorage.setItem('bt_visited', '1');
   } catch(e) {
     console.error('[playPlaylist] play call failed:', e);
+    return;
   }
-  // Re-enable shuffle for the rest of the session
+
+  // STEP 2: Wait for playback to actually start, then toggle shuffle.
+  // This avoids the 404 from /shuffle when no active device exists.
   setTimeout(async () => {
-    try { await api(`/me/player/shuffle?state=true`, { method: 'PUT' }); } catch(e){}
-  }, 500);
+    // First disable shuffle to ensure the requested track stays as track #1
+    try { await api(`/me/player/shuffle?state=false&device_id=${deviceId}`, { method: 'PUT' }); } catch(e){
+      console.warn('[playPlaylist] shuffle off failed (non-fatal):', e.message);
+    }
+    // Then enable for the rest of session
+    setTimeout(async () => {
+      try { await api(`/me/player/shuffle?state=true&device_id=${deviceId}`, { method: 'PUT' }); } catch(e){}
+    }, 400);
+  }, 800);
 }
 
 // Check if we're approaching end of the current play window; if so, queue more.
