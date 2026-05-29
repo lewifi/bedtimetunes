@@ -925,8 +925,8 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-28 00:50 AEST';
-const VERSION = 'v1.1.0';
+const BUILD_DATE = '2026-05-28 01:10 AEST';
+const VERSION = 'v1.2.0';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
 // Populate version on both login + footer
@@ -1707,16 +1707,25 @@ function renderQueue() {
 
 let playWindowStart = 0; // index into tracks where current chunk began
 
-async function playPlaylist() {
+async function playPlaylist(forcedStartUri) {
   if (!tracks.length) {
     console.warn('[playPlaylist] no tracks loaded yet');
     return;
   }
 
-  // Determine start index from first-visit flag
-  const isFirstVisit = !localStorage.getItem('bt_visited');
+  // Highest priority: a track URI passed in (e.g. from shared link)
   let startIdx = 0;
-  if (isFirstVisit) {
+  const isFirstVisit = !localStorage.getItem('bt_visited');
+
+  if (forcedStartUri) {
+    const idx = tracks.findIndex(t => t.uri === forcedStartUri);
+    if (idx !== -1) {
+      startIdx = idx;
+      console.log('[playPlaylist] starting from shared track:', tracks[idx].name);
+    } else {
+      console.warn('[playPlaylist] shared track URI not in playlist:', forcedStartUri);
+    }
+  } else if (isFirstVisit) {
     startIdx = Math.floor(Math.random() * tracks.length);
     console.log('[playPlaylist] first visit — random start at index', startIdx);
   }
@@ -1803,7 +1812,17 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
       alreadyPlaying = cur && cur.is_playing;
     } catch(e) { /* no current state, treat as not playing */ }
 
-    if (!alreadyPlaying) {
+    // Check URL for shared track param
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedTrackId = urlParams.get('track');
+    const sharedTrackUri = sharedTrackId ? `spotify:track:${sharedTrackId}` : null;
+
+    if (sharedTrackUri) {
+      // Always honour shared track even if something's playing — user clicked a link
+      await playPlaylist(sharedTrackUri);
+      // Clean the URL so refresh doesn't re-trigger
+      history.replaceState({}, '', window.location.pathname);
+    } else if (!alreadyPlaying) {
       await playPlaylist();
     }
     // If alreadyPlaying, player_state_changed will sync UI when state arrives
@@ -1879,12 +1898,11 @@ const shareData = {
 function buildTrackShareData() {
   if (!currentTrack) return null;
   const artists = currentTrack.artists.map(a => a.name).join(', ');
-  // Spotify track URIs are spotify:track:ID — convert to open.spotify.com URL
   const trackId = currentTrack.uri.split(':').pop();
   return {
     title: currentTrack.name,
     text: `♪ ${currentTrack.name} — ${artists} · heard on Bedtime Tunes`,
-    url: `https://open.spotify.com/track/${trackId}`,
+    url: `https://bedtimetunes.com/?track=${trackId}`,
   };
 }
 
@@ -2026,10 +2044,14 @@ document.getElementById('volume-slider').addEventListener('input', e => {
   const code   = params.get('code');
   const error  = params.get('error');
 
-  // ALWAYS clear auth params from URL first, before anything async, to prevent
-  // the same code being re-used if the user refreshes mid-exchange.
+  // Clear ONLY auth params from URL — preserve ?track= for shared links
   if (code || error) {
-    history.replaceState({}, '', window.location.pathname);
+    const cleaned = new URLSearchParams(window.location.search);
+    cleaned.delete('code');
+    cleaned.delete('error');
+    cleaned.delete('state');
+    const query = cleaned.toString();
+    history.replaceState({}, '', window.location.pathname + (query ? '?' + query : ''));
   }
 
   if (error) {
