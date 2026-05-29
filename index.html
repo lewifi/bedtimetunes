@@ -925,8 +925,8 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-28 02:20 AEST';
-const VERSION = 'v1.2.4';
+const BUILD_DATE = '2026-05-28 02:40 AEST';
+const VERSION = 'v1.2.5';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
 // Populate version on both login + footer
@@ -2074,6 +2074,16 @@ document.getElementById('volume-slider').addEventListener('input', e => {
   const params = new URLSearchParams(window.location.search);
   const code   = params.get('code');
   const error  = params.get('error');
+
+  // POPUP DETECTION: if we're a popup opened by another window AND we have auth params,
+  // forward them to the parent and close immediately. Don't run the main flow.
+  if (window.opener && window.opener !== window && (code || error)) {
+    try {
+      window.opener.postMessage({ type: 'bt-auth', code, error }, window.location.origin);
+    } catch(e) { /* parent may have closed */ }
+    window.close();
+    return;
+  }
 
   // Clear ONLY auth params from URL — preserve ?track= for shared links
   if (code || error) {
