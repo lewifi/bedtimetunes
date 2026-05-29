@@ -925,8 +925,8 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-28 03:40 AEST';
-const VERSION = 'v1.3.0';
+const BUILD_DATE = '2026-05-28 03:55 AEST';
+const VERSION = 'v1.3.1';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
 // Populate version on both login + footer
@@ -1531,10 +1531,7 @@ function updateTrackUI(item) {
   }
   document.getElementById('time-total').textContent  = ms(item.duration_ms);
   // Remove shimmer + pulse now that we have real data
-  ['now-art-wrap','playlist-art','track-name','artist-name'].forEach(id => {
-    document.getElementById(id)?.classList.remove('shimmer');
-  });
-  document.querySelectorAll('.loading-pulse').forEach(el => el.classList.remove('loading-pulse'));
+  clearLoadingState();
   highlightQueue(item.uri);
   // highlightQueue already updates the active class on existing rows --
   // no need to re-render the full list (which would reset pagination).
@@ -1918,18 +1915,29 @@ window.onSpotifyWebPlaybackSDKReady = async () => {
 // ─────────────────────────────────────────────
 // UI helpers
 // ─────────────────────────────────────────────
+let _loadingStateApplied = false;
 function showPlayer() {
   document.getElementById('login-screen').style.display  = 'none';
   document.getElementById('player-screen').style.display = 'flex';
-  // Add shimmer to track info + artwork
+  // Only apply loading state on first call — don't re-apply after we've cleared it
+  if (_loadingStateApplied) return;
+  _loadingStateApplied = true;
   ['now-art-wrap','playlist-art','track-name','artist-name'].forEach(id => {
     document.getElementById(id)?.classList.add('shimmer');
   });
   document.getElementById('queue-list').classList.add('fading');
-  // Pulse the glass-card backgrounds + show-playlist button while loading
   document.querySelectorAll('#player-screen .glass-card').forEach(el => {
     el.classList.add('loading-pulse');
   });
+}
+
+function clearLoadingState() {
+  ['now-art-wrap','playlist-art','track-name','artist-name'].forEach(id => {
+    document.getElementById(id)?.classList.remove('shimmer');
+  });
+  document.querySelectorAll('.loading-pulse').forEach(el => el.classList.remove('loading-pulse'));
+  // Mark it cleared so showPlayer doesn't re-add it
+  _loadingStateApplied = true;
 }
 function showError(msg) {
   const el = document.getElementById('error-msg');
