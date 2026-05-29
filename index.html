@@ -862,6 +862,12 @@
       </div>
 
       <div class="controls">
+        <button class="ctrl-btn" id="btn-restart" title="Start fresh" aria-label="Start fresh">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7"></path>
+            <polyline points="3 4 3 10 9 10"></polyline>
+          </svg>
+        </button>
         <button class="ctrl-btn play-pause" id="btn-play" title="Play/Pause">
           <svg id="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M8 5v14l11-7z"/>
@@ -925,8 +931,8 @@
 // CONFIGURATION — paste your own values here
 // ─────────────────────────────────────────────
 // ─── Build info ───
-const BUILD_DATE = '2026-05-28 04:25 AEST';
-const VERSION = 'v1.3.3';
+const BUILD_DATE = '2026-05-28 04:45 AEST';
+const VERSION = 'v1.4.0';
 console.log('🌙 Bedtime Tunes — last updated:', BUILD_DATE, '·', VERSION);
 
 // Populate version on both login + footer
@@ -2096,6 +2102,14 @@ document.querySelectorAll('.share-opt').forEach(btn => {
 });
 
 document.getElementById('login-btn').addEventListener('click', login);
+
+document.getElementById('btn-restart').addEventListener('click', async () => {
+  if (!tracks.length) return;
+  // Force a new random starting track — bypass first-visit + shared link logic
+  const randIdx = Math.floor(Math.random() * tracks.length);
+  await playPlaylist(tracks[randIdx].uri);
+  pendingStartUri = null;
+});
 
 document.getElementById('btn-play').addEventListener('click', async () => {
   if (!player) return;
