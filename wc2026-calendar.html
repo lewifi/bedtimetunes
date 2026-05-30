@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIFA World Cup 2026 – Calendar</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pitch: #1a3a2a;
+    --grass: #0f5132;
+    --gold: #f0b429;
+    --red: #e63946;
+    --white: #f8f9fa;
+    --grey: #8d99ae;
+    --dark: #0d1b2a;
+    --card: #162233;
+    --border: rgba(240,180,41,0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--dark);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(15,81,50,0.4) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, rgba(230,57,70,0.15) 0%, transparent 50%);
+  }
+
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    position: relative;
+  }
+
+  .trophy {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 0.5rem;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    letter-spacing: 0.04em;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--gold), #fff 50%, var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    color: var(--grey);
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+  }
+
+  .info-bar {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin: 1.5rem auto;
+    max-width: 600px;
+    font-size: 0.8rem;
+    color: var(--grey);
+  }
+
+  .info-bar span {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .info-bar strong { color: var(--gold); }
+
+  /* Controls */
+  .controls {
+    max-width: 1100px;
+    margin: 0 auto 1.5rem;
+    padding: 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .filter-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--grey);
+    padding: 0.4rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+    text-transform: uppercase;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--gold);
+    color: var(--dark);
+    border-color: var(--gold);
+    font-weight: 600;
+  }
+
+  .tz-select {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--white);
+    padding: 0.4rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    outline: none;
+  }
+
+  /* Download all button */
+  .dl-all-wrap {
+    text-align: center;
+    margin: 0 auto 2rem;
+  }
+
+  .dl-all-btn {
+    background: linear-gradient(135deg, var(--grass), #1a6640);
+    border: 1px solid rgba(240,180,41,0.4);
+    color: var(--gold);
+    padding: 0.75rem 2rem;
+    border-radius: 6px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .dl-all-btn:hover {
+    background: linear-gradient(135deg, #1a6640, var(--grass));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(15,81,50,0.5);
+  }
+
+  /* Stage sections */
+  .stage-section {
+    max-width: 1100px;
+    margin: 0 auto 2.5rem;
+    padding: 0 1rem;
+  }
+
+  .stage-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .match-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .match-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+
+  .match-card:hover {
+    border-color: rgba(240,180,41,0.4);
+    transform: translateY(-1px);
+  }
+
+  .match-card.hidden { display: none; }
+
+  .match-info { flex: 1; min-width: 0; }
+
+  .match-teams {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.3rem;
+  }
+
+  .match-meta {
+    font-size: 0.72rem;
+    color: var(--grey);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+  }
+
+  .match-meta .dot { opacity: 0.3; }
+
+  .group-badge {
+    background: rgba(240,180,41,0.12);
+    color: var(--gold);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .add-btn {
+    background: transparent;
+    border: 1px solid rgba(240,180,41,0.3);
+    color: var(--gold);
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+
+  .add-btn:hover {
+    background: var(--gold);
+    color: var(--dark);
+    border-color: var(--gold);
+  }
+
+  footer {
+    text-align: center;
+    padding: 2rem 1rem 3rem;
+    color: var(--grey);
+    font-size: 0.75rem;
+    border-top: 1px solid var(--border);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="trophy">🏆</span>
+  <h1>World Cup 2026</h1>
+  <p class="subtitle">Full Match Calendar — 104 Matches · June 11 – July 19</p>
+  <div class="info-bar">
+    <span>🇺🇸🇨🇦🇲🇽 <strong>USA · Canada · Mexico</strong></span>
+    <span>📅 <strong>Jun 11 – Jul 19, 2026</strong></span>
+    <span>⚽ <strong>48 teams · 104 matches</strong></span>
+    <span>🔔 <strong>1-hour reminder set</strong></span>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="filter-group" id="stageFilters">
+    <button class="filter-btn active" onclick="filterStage('all', this)">All Matches</button>
+    <button class="filter-btn" onclick="filterStage('Group Stage', this)">Group Stage</button>
+    <button class="filter-btn" onclick="filterStage('Round of 32', this)">Round of 32</button>
+    <button class="filter-btn" onclick="filterStage('Round of 16', this)">Round of 16</button>
+    <button class="filter-btn" onclick="filterStage('Quarter-final', this)">Quarter-finals</button>
+    <button class="filter-btn" onclick="filterStage('Semi-final', this)">Semi-finals</button>
+    <button class="filter-btn" onclick="filterStage('Final', this)">Finals</button>
+  </div>
+  <select class="tz-select" id="tzSelect" onchange="renderMatches()">
+    <option value="10">AEST (UTC+10)</option>
+    <option value="11">AEDT (UTC+11)</option>
+    <option value="8">AWST (UTC+8)</option>
+    <option value="9.5">ACST (UTC+9:30)</option>
+    <option value="8">PHT (UTC+8)</option>
+    <option value="7">ICT (UTC+7)</option>
+    <option value="0">UTC</option>
+    <option value="-4">ET (UTC-4)</option>
+    <option value="-5">CT (UTC-5)</option>
+    <option value="-7">PT (UTC-7)</option>
+    <option value="1">BST (UTC+1)</option>
+  </select>
+</div>
+
+<div class="dl-all-wrap">
+  <button class="dl-all-btn" onclick="downloadAllICS()">
+    ⬇ Download All 104 Matches (.ics)
+  </button>
+</div>
+
+<div id="matchContainer"></div>
+
+<footer>
+  Times shown in selected timezone. Click ➕ on any match to add it directly to Google Calendar.<br>
+  Or download all matches as a single .ics file and import into Google Calendar, Apple Calendar, or Outlook.<br>
+  All times in ET from official FIFA/FOX schedule. 1-hour reminder included on all events.
+</footer>
+
+<script>
+// All 104 matches. ET offset = -4 (EDT). Stored as UTC ISO strings.
+// ET = UTC-4, so ET 3pm = UTC 19:00
+
+function etToUTC(dateStr, etHour, etMin = 0) {
+  // dateStr: "2026-06-11", etHour: 15
+  const utcHour = etHour + 4; // ET is UTC-4 in summer
+  const d = new Date(`${dateStr}T${String(utcHour % 24).padStart(2,'0')}:${String(etMin).padStart(2,'0')}:00Z`);
+  if (utcHour >= 24) d.setDate(d.getDate()); // already handled
+  return d;
+}
+
+// Parse "3:00 PM" → {h:15, m:0}, "10:00 PM" → {h:22, m:0}, "12:00 AM ET" → next day issues handled
+function parseET(str) {
+  const m = str.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return {h:0, m:0};
+  let h = parseInt(m[1]);
+  const min = parseInt(m[2]);
+  const ampm = m[3].toUpperCase();
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return {h, m: min};
+}
+
+const RAW_MATCHES = [
+  // GROUP STAGE
+  // Thu Jun 11
+  {date:'2026-06-11', time:'3:00 PM', teams:'Mexico vs South Africa', group:'A', venue:'Mexico City Stadium', stage:'Group Stage'},
+  {date:'2026-06-11', time:'10:00 PM', teams:'South Korea vs Czechia', group:'A', venue:'Guadalajara Stadium', stage:'Group Stage'},
+  // Fri Jun 12
+  {date:'2026-06-12', time:'3:00 PM', teams:'Canada vs Bosnia & Herzegovina', group:'B', venue:'Toronto Stadium', stage:'Group Stage'},
+  {date:'2026-06-12', time:'9:00 PM', teams:'USA vs Paraguay', group:'D', venue:'Los Angeles Stadium', stage:'Group Stage'},
+  // Sat Jun 13
+  {date:'2026-06-13', time:'3:00 PM', teams:'Qatar vs Switzerland', group:'B', venue:'San Francisco Bay Stadium', stage:'Group Stage'},
+  {date:'2026-06-13', time:'6:00 PM', teams:'Brazil vs Morocco', group:'C', venue:'New York New Jersey Stadium', stage:'Group Stage'},
+  {date:'2026-06-13', time:'9:00 PM', teams:'Haiti vs Scotland', group:'C', venue:'Boston Stadium', stage:'Group Stage'},
+  {date:'2026-06-14', time:'12:00 AM', teams:'Australia vs Türkiye', group:'D', venue:'BC Place, Vancouver', stage:'Group Stage'},
+  // Sun Jun 14
+  {date:'2026-06-14', time:'1:00 PM', teams:'Germany vs Curaçao', group:'E', venue:'Houston Stadium', stage:'Group Stage'},
+  {date:'2026-06-14', time:'4:00 PM', teams:'Netherlands vs Japan', group:'F', venue:'Dallas Stadium', stage:'Group Stage'},
+  {date:'2026-06-14', time:'7:00 PM', teams:'Ivory Coast vs Ecuador', group:'E', venue:'Philadelphia Stadium', stage:'Group Stage'},
+  {date:'2026-06-15', time:'12:00 AM', teams:'Tunisia vs Sweden', group:'F', venue:'Monterrey Stadium', stage:'Group Stage'},
+  // Mon Jun 15
+  {date:'2026-06-15', time:'12:00 PM', teams:'Spain vs Cape Verde', group:'H', venue:'Atlanta Stadium', stage:'Group Stage'},
+  {date:'2026-06-15', time:'3:00 PM', teams:'Belgium vs Egypt', group:'G', venue:'Seattle Stadium', stage:'Group Stage'},
+  {date:'2026-06-15', time:'6:00 PM', teams:'Saudi Arabia vs Uruguay', group:'H', venue:'Miami Stadium', stage:'Group Stage'},
+  {date:'2026-06-15', time:'9:00 PM', teams:'Iran vs New Zealand', group:'G', venue:'Los Angeles Stadium', stage:'Group Stage'},
+  // Tue Jun 16
+  {date:'2026-06-16', time:'3:00 PM', teams:'France vs Senegal', group:'I', venue:'New York New Jersey Stadium', stage:'Group Stage'},
+  {date:'2026-06-16', time:'6:00 PM', teams:'Norway vs Iraq', group:'I', venue:'Boston Stadium', stage:'Group Stage'},
+  {date:'2026-06-16', time:'9:00 PM', teams:'Argentina vs Algeria', group:'J', venue:'Kansas City Stadium', stage:'Group Stage'},
+  {date:'2026-06-17', time:'12:00 AM', teams:'Austria vs Jordan', group:'J', venue:'San Francisco Bay Stadium', stage:'Group Stage'},
+  // Wed Jun 17
+  {date:'2026-06-17', time:'1:00 PM', teams:'Portugal vs DR Congo', group:'K', venue:'Houston Stadium', stage:'Group Stage'},
+  {date:'2026-06-17', time:'4:00 PM', teams:'England vs Croatia', group:'L', venue:'Dallas Stadium', stage:'Group Stage'},
+  {date:'2026-06-17', time:'7:00 PM', teams:'Ghana vs Panama', group:'L', venue:'Toronto Stadium', stage:'Group Stage'},
+  {date:'2026-06-17', time:'10:00 PM', teams:'Uzbekistan vs Colombia', group:'K', venue:'Mexico City Stadium', stage:'Group Stage'},
+  // Thu Jun 18
+  {date:'2026-06-18', time:'12:00 PM', teams:'South Africa vs Czechia', group:'A', venue:'Atlanta Stadium', stage:'Group Stage'},
+  {date:'2026-06-18', time:'3:00 PM', teams:'Switzerland vs Bosnia & Herzegovina', group:'B', venue:'Los Angeles Stadium', stage:'Group Stage'},
+  {date:'2026-06-18', time:'6:00 PM', teams:'Canada vs Qatar', group:'B', venue:'BC Place, Vancouver', stage:'Group Stage'},
+  {date:'2026-06-18', time:'9:00 PM', teams:'Mexico vs South Korea', group:'A', venue:'Guadalajara Stadium', stage:'Group Stage'},
+  // Fri Jun 19
+  {date:'2026-06-19', time:'3:00 PM', teams:'USA vs Australia', group:'D', venue:'Seattle Stadium', stage:'Group Stage'},
+  {date:'2026-06-19', time:'3:00 PM', teams:'Scotland vs Morocco', group:'C', venue:'Boston Stadium', stage:'Group Stage'},
+  {date:'2026-06-19', time:'9:00 PM', teams:'Brazil vs Haiti', group:'C', venue:'Philadelphia Stadium', stage:'Group Stage'},
+  {date:'2026-06-20', time:'12:00 AM', teams:'Paraguay vs Türkiye', group:'D', venue:'San Francisco Bay Stadium', stage:'Group Stage'},
+  // Sat Jun 20
+  {date:'2026-06-20', time:'1:00 PM', teams:'Netherlands vs Sweden', group:'F', venue:'Houston Stadium', stage:'Group Stage'},
+  {date:'2026-06-20', time:'4:00 PM', teams:'Germany vs Ivory Coast', group:'E', venue:'Toronto Stadium', stage:'Group Stage'},
+  {date:'2026-06-20', time:'8:00 PM', teams:'Ecuador vs Curaçao', group:'E', venue:'Kansas City Stadium', stage:'Group Stage'},
+  {date:'2026-06-21', time:'12:00 AM', teams:'Tunisia vs Japan', group:'F', venue:'Monterrey Stadium', stage:'Group Stage'},
+  // Sun Jun 21
+  {date:'2026-06-21', time:'12:00 PM', teams:'Spain vs Saudi Arabia', group:'H', venue:'Atlanta Stadium', stage:'Group Stage'},
+  {date:'2026-06-21', time:'3:00 PM', teams:'Belgium vs Iran', group:'G', venue:'Los Angeles Stadium', stage:'Group Stage'},
+  {date:'2026-06-21', time:'6:00 PM', teams:'Uruguay vs Cape Verde', group:'H', venue:'Miami Stadium', stage:'Group Stage'},
+  {date:'2026-06-21', time:'9:00 PM', teams:'New Zealand vs Egypt', group:'G', venue:'BC Place, Vancouver', stage:'Group Stage'},
+  // Mon Jun 22
+  {date:'2026-06-22', time:'1:00 PM', teams:'Argentina vs Austria', group:'J', venue:'Dallas Stadium', stage:'Group Stage'},
+  {date:'2026-06-22', time:'5:00 PM', teams:'France vs Iraq', group:'I', venue:'Philadelphia Stadium', stage:'Group Stage'},
+  {date:'2026-06-22', time:'8:00 PM', teams:'Norway vs Senegal', group:'I', venue:'New York New Jersey Stadium', stage:'Group Stage'},
+  {date:'2026-06-23', time:'12:00 AM', teams:'Jordan vs Algeria', group:'J', venue:'San Francisco Bay Stadium', stage:'Group Stage'},
+  // Tue Jun 23
+  {date:'2026-06-23', time:'1:00 PM', teams:'Portugal vs Uzbekistan', group:'K', venue:'Houston Stadium', stage:'Group Stage'},
+  {date:'2026-06-23', time:'4:00 PM', teams:'England vs Ghana', group:'L', venue:'Boston Stadium', stage:'Group Stage'},
+  {date:'2026-06-23', time:'7:00 PM', teams:'Panama vs Croatia', group:'L', venue:'Toronto Stadium', stage:'Group Stage'},
+  {date:'2026-06-23', time:'10:00 PM', teams:'Colombia vs DR Congo', group:'K', venue:'Guadalajara Stadium', stage:'Group Stage'},
+  // Wed Jun 24
+  {date:'2026-06-24', time:'3:00 PM', teams:'Canada vs Switzerland', group:'B', venue:'BC Place, Vancouver', stage:'Group Stage'},
+  {date:'2026-06-24', time:'3:00 PM', teams:'Qatar vs Bosnia & Herzegovina', group:'B', venue:'Seattle Stadium', stage:'Group Stage'},
+  {date:'2026-06-24', time:'6:00 PM', teams:'Scotland vs Brazil', group:'C', venue:'Miami Stadium', stage:'Group Stage'},
+  {date:'2026-06-24', time:'6:00 PM', teams:'Morocco vs Haiti', group:'C', venue:'Atlanta Stadium', stage:'Group Stage'},
+  {date:'2026-06-24', time:'9:00 PM', teams:'Mexico vs Czechia', group:'A', venue:'Mexico City Stadium', stage:'Group Stage'},
+  {date:'2026-06-24', time:'9:00 PM', teams:'South Korea vs South Africa', group:'A', venue:'Monterrey Stadium', stage:'Group Stage'},
+  // Thu Jun 25
+  {date:'2026-06-25', time:'4:00 PM', teams:'Ecuador vs Germany', group:'E', venue:'New York New Jersey Stadium', stage:'Group Stage'},
+  {date:'2026-06-25', time:'4:00 PM', teams:'Curaçao vs Ivory Coast', group:'E', venue:'Philadelphia Stadium', stage:'Group Stage'},
+  {date:'2026-06-25', time:'7:00 PM', teams:'Tunisia vs Netherlands', group:'F', venue:'Kansas City Stadium', stage:'Group Stage'},
+  {date:'2026-06-25', time:'7:00 PM', teams:'Japan vs Sweden', group:'F', venue:'Dallas Stadium', stage:'Group Stage'},
+  {date:'2026-06-25', time:'10:00 PM', teams:'USA vs Türkiye', group:'D', venue:'Los Angeles Stadium', stage:'Group Stage'},
+  {date:'2026-06-25', time:'10:00 PM', teams:'Paraguay vs Australia', group:'D', venue:'San Francisco Bay Stadium', stage:'Group Stage'},
+  // Fri Jun 26
+  {date:'2026-06-26', time:'3:00 PM', teams:'Norway vs France', group:'I', venue:'Boston Stadium', stage:'Group Stage'},
+  {date:'2026-06-26', time:'3:00 PM', teams:'Senegal vs Iraq', group:'I', venue:'Toronto Stadium', stage:'Group Stage'},
+  {date:'2026-06-26', time:'8:00 PM', teams:'Uruguay vs Spain', group:'H', venue:'Guadalajara Stadium', stage:'Group Stage'},
+  {date:'2026-06-26', time:'8:00 PM', teams:'Cape Verde vs Saudi Arabia', group:'H', venue:'Houston Stadium', stage:'Group Stage'},
+  {date:'2026-06-27', time:'12:00 AM', teams:'New Zealand vs Belgium', group:'G', venue:'BC Place, Vancouver', stage:'Group Stage'},
+  {date:'2026-06-27', time:'12:00 AM', teams:'Egypt vs Iran', group:'G', venue:'Seattle Stadium', stage:'Group Stage'},
+  // Sat Jun 27
+  {date:'2026-06-27', time:'5:00 PM', teams:'Panama vs England', group:'L', venue:'New York New Jersey Stadium', stage:'Group Stage'},
+  {date:'2026-06-27', time:'5:00 PM', teams:'Croatia vs Ghana', group:'L', venue:'Philadelphia Stadium', stage:'Group Stage'},
+  {date:'2026-06-27', time:'7:30 PM', teams:'Colombia vs Portugal', group:'K', venue:'Miami Stadium', stage:'Group Stage'},
+  {date:'2026-06-27', time:'7:30 PM', teams:'Uzbekistan vs DR Congo', group:'K', venue:'Atlanta Stadium', stage:'Group Stage'},
+  {date:'2026-06-27', time:'10:00 PM', teams:'Jordan vs Argentina', group:'J', venue:'Dallas Stadium', stage:'Group Stage'},
+  {date:'2026-06-27', time:'10:00 PM', teams:'Algeria vs Austria', group:'J', venue:'Kansas City Stadium', stage:'Group Stage'},
+
+  // ROUND OF 32
+  {date:'2026-06-28', time:'3:00 PM', teams:'Runner-up A vs Runner-up B', group:'', venue:'Los Angeles Stadium', stage:'Round of 32', match:'73'},
+  {date:'2026-06-29', time:'4:30 PM', teams:'Winner E vs 3rd (A/B/C/D/F)', group:'', venue:'Boston Stadium', stage:'Round of 32', match:'74'},
+  {date:'2026-06-29', time:'9:00 PM', teams:'Winner F vs Runner-up C', group:'', venue:'Monterrey Stadium', stage:'Round of 32', match:'75'},
+  {date:'2026-06-29', time:'1:00 PM', teams:'Winner C vs Runner-up F', group:'', venue:'Houston Stadium', stage:'Round of 32', match:'76'},
+  {date:'2026-06-30', time:'5:00 PM', teams:'Winner I vs 3rd (C/D/F/G/H)', group:'', venue:'New York New Jersey Stadium', stage:'Round of 32', match:'77'},
+  {date:'2026-06-30', time:'1:00 PM', teams:'Runner-up E vs Runner-up I', group:'', venue:'Dallas Stadium', stage:'Round of 32', match:'78'},
+  {date:'2026-06-30', time:'9:00 PM', teams:'Winner A vs 3rd (C/E/F/H/I)', group:'', venue:'Mexico City Stadium', stage:'Round of 32', match:'79'},
+  {date:'2026-07-01', time:'12:00 PM', teams:'Winner L vs 3rd (E/H/I/J/K)', group:'', venue:'Atlanta Stadium', stage:'Round of 32', match:'80'},
+  {date:'2026-07-01', time:'8:00 PM', teams:'Winner D vs 3rd (B/E/F/I/J)', group:'', venue:'San Francisco Bay Stadium', stage:'Round of 32', match:'81'},
+  {date:'2026-07-01', time:'4:00 PM', teams:'Winner G vs 3rd (A/E/H/I/J)', group:'', venue:'Seattle Stadium', stage:'Round of 32', match:'82'},
+  {date:'2026-07-02', time:'7:00 PM', teams:'Runner-up K vs Runner-up L', group:'', venue:'Toronto Stadium', stage:'Round of 32', match:'83'},
+  {date:'2026-07-02', time:'3:00 PM', teams:'Winner H vs Runner-up J', group:'', venue:'Los Angeles Stadium', stage:'Round of 32', match:'84'},
+  {date:'2026-07-02', time:'11:00 PM', teams:'Winner B vs 3rd (E/F/G/I/J)', group:'', venue:'BC Place, Vancouver', stage:'Round of 32', match:'85'},
+  {date:'2026-07-03', time:'6:00 PM', teams:'Winner J vs Runner-up H', group:'', venue:'Miami Stadium', stage:'Round of 32', match:'86'},
+  {date:'2026-07-03', time:'9:30 PM', teams:'Winner K vs 3rd (D/E/I/J/L)', group:'', venue:'Kansas City Stadium', stage:'Round of 32', match:'87'},
+  {date:'2026-07-03', time:'2:00 PM', teams:'Runner-up D vs Runner-up G', group:'', venue:'Dallas Stadium', stage:'Round of 32', match:'88'},
+
+  // ROUND OF 16
+  {date:'2026-07-04', time:'5:00 PM', teams:'Winner M74 vs Winner M77', group:'', venue:'Philadelphia Stadium', stage:'Round of 16', match:'89'},
+  {date:'2026-07-04', time:'1:00 PM', teams:'Winner M73 vs Winner M75', group:'', venue:'Houston Stadium', stage:'Round of 16', match:'90'},
+  {date:'2026-07-05', time:'4:00 PM', teams:'Winner M76 vs Winner M78', group:'', venue:'New York New Jersey Stadium', stage:'Round of 16', match:'91'},
+  {date:'2026-07-05', time:'8:00 PM', teams:'Winner M79 vs Winner M80', group:'', venue:'Mexico City Stadium', stage:'Round of 16', match:'92'},
+  {date:'2026-07-06', time:'3:00 PM', teams:'Winner M83 vs Winner M84', group:'', venue:'Dallas Stadium', stage:'Round of 16', match:'93'},
+  {date:'2026-07-06', time:'8:00 PM', teams:'Winner M81 vs Winner M82', group:'', venue:'Seattle Stadium', stage:'Round of 16', match:'94'},
+  {date:'2026-07-07', time:'12:00 PM', teams:'Winner M86 vs Winner M88', group:'', venue:'Atlanta Stadium', stage:'Round of 16', match:'95'},
+  {date:'2026-07-07', time:'4:00 PM', teams:'Winner M85 vs Winner M87', group:'', venue:'BC Place, Vancouver', stage:'Round of 16', match:'96'},
+
+  // QUARTER-FINALS
+  {date:'2026-07-09', time:'4:00 PM', teams:'Quarter-final 1', group:'', venue:'Boston Stadium', stage:'Quarter-final', match:'97'},
+  {date:'2026-07-10', time:'3:00 PM', teams:'Quarter-final 2', group:'', venue:'Los Angeles Stadium', stage:'Quarter-final', match:'98'},
+  {date:'2026-07-11', time:'5:00 PM', teams:'Quarter-final 3', group:'', venue:'Miami Stadium', stage:'Quarter-final', match:'99'},
+  {date:'2026-07-11', time:'9:00 PM', teams:'Quarter-final 4', group:'', venue:'Kansas City Stadium', stage:'Quarter-final', match:'100'},
+
+  // SEMI-FINALS
+  {date:'2026-07-14', time:'3:00 PM', teams:'Semi-final 1', group:'', venue:'Dallas Stadium', stage:'Semi-final', match:'101'},
+  {date:'2026-07-15', time:'3:00 PM', teams:'Semi-final 2', group:'', venue:'Atlanta Stadium', stage:'Semi-final', match:'102'},
+
+  // THIRD PLACE
+  {date:'2026-07-18', time:'5:00 PM', teams:'Third Place Play-off', group:'', venue:'Miami Stadium', stage:'Final', match:'103'},
+
+  // FINAL
+  {date:'2026-07-19', time:'3:00 PM', teams:'🏆 World Cup Final', group:'', venue:'MetLife Stadium, New York/New Jersey', stage:'Final', match:'104'},
+];
+
+function getOffsetHours() {
+  const val = parseFloat(document.getElementById('tzSelect').value);
+  return val;
+}
+
+function toLocalTime(date, offsetHours) {
+  const offsetMs = offsetHours * 3600000;
+  return new Date(date.getTime() + offsetMs);
+}
+
+function formatLocalTime(utcDate, offsetHours) {
+  const local = toLocalTime(utcDate, offsetHours);
+  const h = local.getUTCHours();
+  const m = local.getUTCMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hh = h % 12 || 12;
+  const mm = m.toString().padStart(2, '0');
+  return `${hh}:${mm} ${ampm}`;
+}
+
+function formatLocalDate(utcDate, offsetHours) {
+  const local = toLocalTime(utcDate, offsetHours);
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${days[local.getUTCDay()]} ${local.getUTCDate()} ${months[local.getUTCMonth()]}`;
+}
+
+function getMatchUTC(match) {
+  const {h, m} = parseET(match.time);
+  let utcH = h + 4;
+  let date = match.date;
+  if (utcH >= 24) {
+    utcH -= 24;
+    // add a day
+    const d = new Date(date + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 1);
+    date = d.toISOString().slice(0, 10);
+  }
+  return new Date(`${date}T${String(utcH).padStart(2,'0')}:${String(m).padStart(2,'0')}:00Z`);
+}
+
+function gcalLink(match) {
+  const start = getMatchUTC(match);
+  const end = new Date(start.getTime() + 2 * 3600000); // 2 hours
+  const fmt = d => d.toISOString().replace(/[-:]/g,'').replace('.000','');
+  const title = encodeURIComponent(`⚽ WC2026: ${match.teams}`);
+  const details = encodeURIComponent(`FIFA World Cup 2026 | ${match.stage}${match.group ? ' Group ' + match.group : ''}${match.match ? ' | Match ' + match.match : ''}`);
+  const loc = encodeURIComponent(match.venue);
+  return `https://calendar.google.com/calendar/r/eventedit?text=${title}&dates=${fmt(start)}/${fmt(end)}&details=${details}&location=${loc}&sprop=name:FIFA+World+Cup+2026&reminder=60`;
+}
+
+function icsEvent(match, uid) {
+  const start = getMatchUTC(match);
+  const end = new Date(start.getTime() + 2 * 3600000);
+  const fmt = d => d.toISOString().replace(/[-:]/g,'').replace('.000','');
+  const title = `⚽ WC2026: ${match.teams}`;
+  const desc = `FIFA World Cup 2026 | ${match.stage}${match.group ? ' Group ' + match.group : ''}${match.match ? ' | Match ' + match.match : ''}`;
+  return [
+    'BEGIN:VEVENT',
+    `UID:wc2026-${uid}@lewi.fi`,
+    `DTSTART:${fmt(start)}`,
+    `DTEND:${fmt(end)}`,
+    `SUMMARY:${title}`,
+    `DESCRIPTION:${desc}`,
+    `LOCATION:${match.venue}`,
+    'BEGIN:VALARM',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Match starting in 1 hour!',
+    'TRIGGER:-PT60M',
+    'END:VALARM',
+    'END:VEVENT',
+  ].join('\r\n');
+}
+
+function downloadAllICS() {
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//FIFA World Cup 2026//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:FIFA World Cup 2026',
+    'X-WR-TIMEZONE:UTC',
+  ];
+  RAW_MATCHES.forEach((m, i) => lines.push(icsEvent(m, i + 1)));
+  lines.push('END:VCALENDAR');
+  const blob = new Blob([lines.join('\r\n')], {type: 'text/calendar'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'FIFA_World_Cup_2026.ics';
+  a.click();
+}
+
+let currentFilter = 'all';
+
+function filterStage(stage, btn) {
+  currentFilter = stage;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.match-card').forEach(card => {
+    if (stage === 'all' || card.dataset.stage === stage) {
+      card.classList.remove('hidden');
+    } else {
+      card.classList.add('hidden');
+    }
+  });
+  // Update stage section visibility
+  document.querySelectorAll('.stage-section').forEach(s => {
+    const visible = s.querySelectorAll('.match-card:not(.hidden)').length;
+    s.style.display = visible ? '' : 'none';
+  });
+}
+
+function stageEmoji(stage) {
+  if (stage === 'Group Stage') return '🟢';
+  if (stage === 'Round of 32') return '🔵';
+  if (stage === 'Round of 16') return '🟡';
+  if (stage === 'Quarter-final') return '🟠';
+  if (stage === 'Semi-final') return '🔴';
+  if (stage === 'Final') return '🏆';
+  return '⚽';
+}
+
+function renderMatches() {
+  const offset = getOffsetHours();
+  const container = document.getElementById('matchContainer');
+  const stages = ['Group Stage', 'Round of 32', 'Round of 16', 'Quarter-final', 'Semi-final', 'Final'];
+  
+  container.innerHTML = stages.map(stage => {
+    const matches = RAW_MATCHES.filter(m => m.stage === stage);
+    const cards = matches.map((m, idx) => {
+      const utc = getMatchUTC(m);
+      const localTime = formatLocalTime(utc, offset);
+      const localDate = formatLocalDate(utc, offset);
+      const gcal = gcalLink(m);
+      const stageClass = stage.replace(/\s/g, '-').toLowerCase();
+      const isHidden = currentFilter !== 'all' && currentFilter !== stage ? 'hidden' : '';
+      return `<div class="match-card ${isHidden}" data-stage="${stage}">
+        ${m.group ? `<div class="group-badge">Grp ${m.group}</div>` : (m.match ? `<div class="group-badge">M${m.match}</div>` : '')}
+        <div class="match-info">
+          <div class="match-teams">${m.teams}</div>
+          <div class="match-meta">
+            <span>${localDate}</span>
+            <span class="dot">·</span>
+            <span>${localTime}</span>
+            <span class="dot">·</span>
+            <span>${m.venue}</span>
+          </div>
+        </div>
+        <a class="add-btn" href="${gcal}" target="_blank" title="Add to Google Calendar">➕</a>
+      </div>`;
+    }).join('');
+
+    return `<div class="stage-section" id="stage-${stage.replace(/\s/g,'-')}">
+      <div class="stage-title">${stageEmoji(stage)} ${stage}</div>
+      <div class="match-grid">${cards}</div>
+    </div>`;
+  }).join('');
+}
+
+renderMatches();
+</script>
+</body>
+</html>
