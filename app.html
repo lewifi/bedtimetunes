@@ -952,7 +952,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const CLIENT_ID      = 'e86a40e7f7704f33a1ceaffc9e2d16b7';
-const REDIRECT_URI   = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/';
+// Change this line:
+// const REDIRECT_URI   = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/';
+const REDIRECT_URI   = 'https://bedtimetunes.com/app.html';
+
 const PLAYLIST_ID    = '6AGKG8W0y4xezu8Cl6Rtkj';
 const SCOPES         = [
   'streaming',
